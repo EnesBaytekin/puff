@@ -142,10 +142,6 @@ class SoftBody {
 
     // Draw the creature on canvas
     draw(ctx) {
-        // Draw the main irregular rotating circle with smooth curves
-        ctx.beginPath();
-        ctx.fillStyle = this.color;
-
         const numPoints = this.mainCircle.deformPoints.length;
 
         // Yumuşak eğrilerle düzensiz şekli çiz
@@ -166,6 +162,9 @@ class SoftBody {
 
         const midX = (firstX + lastX) / 2;
         const midY = (firstY + lastY) / 2;
+
+        // İlk olarak shape'i başlat (hem fill hem stroke için)
+        ctx.beginPath();
 
         ctx.moveTo(midX, midY);
 
@@ -194,7 +193,17 @@ class SoftBody {
         }
 
         ctx.closePath();
+
+        // Fill with color
+        ctx.fillStyle = this.color;
         ctx.fill();
+
+        // Draw outline (kendi renginin daha koyusu)
+        ctx.strokeStyle = '#d6aea3'; // Pastel pink'in daha koyu versiyonu
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
 
         // Draw the face on top
         this.drawFace(ctx);
