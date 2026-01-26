@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 env:
   DOCKER_UI_IMAGE: enesbaytekin/puff-ui
   DOCKER_SERVER_IMAGE: enesbaytekin/puff-server
