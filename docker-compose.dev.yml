@@ -1,0 +1,69 @@
+# Docker Compose for Local Development
+# Usage: docker-compose -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: puff-db-dev
+    environment:
+      POSTGRES_DB: digitoy
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - puff-network
+
+  # Backend Server (Development)
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    container_name: puff-server-dev
+    environment:
+      DB_HOST: db
+      DB_NAME: digitoy
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: dev-secret-key-change-in-production
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./server:/app/server:ro
+      - /app/node_modules
+    networks:
+      - puff-network
+
+  # Frontend UI (Development)
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    container_name: puff-ui-dev
+    ports:
+      - "8080:80"
+    depends_on:
+      - server
+    networks:
+      - puff-network
+
+volumes:
+  postgres-data-dev:
+
+networks:
+  puff-network:
+    driver: bridge

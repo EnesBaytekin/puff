@@ -8,14 +8,82 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <canvas id="canvas"></canvas>
+    <!-- Login View -->
+    <div id="view-login" class="view" style="display: none;">
+        <div class="auth-container">
+            <h1>Welcome to Digitoy</h1>
+            <p>Your calm, digital companion</p>
+            <form id="login-form">
+                <input type="email" id="login-email" placeholder="Email" required>
+                <input type="password" id="login-password" placeholder="Password" required>
+                <button type="submit">Login</button>
+            </form>
+            <p class="error-message" id="login-error"></p>
+            <p class="switch-view">Don't have an account? <a href="#register">Register</a></p>
+        </div>
+    </div>
 
+    <!-- Register View -->
+    <div id="view-register" class="view" style="display: none;">
+        <div class="auth-container">
+            <h1>Create Account</h1>
+            <p>Join and create your own puff</p>
+            <form id="register-form">
+                <input type="email" id="register-email" placeholder="Email" required>
+                <input type="password" id="register-password" placeholder="Password (min 6 characters)" required>
+                <button type="submit">Register</button>
+            </form>
+            <p class="error-message" id="register-error"></p>
+            <p class="switch-view">Already have an account? <a href="#login">Login</a></p>
+        </div>
+    </div>
+
+    <!-- Customize Puff View -->
+    <div id="view-customize" class="view" style="display: none;">
+        <div class="customize-container">
+            <h1>Create Your Puff</h1>
+            <p>Give your puff a name and color</p>
+            <form id="customize-form">
+                <input type="text" id="puff-name" placeholder="Puff name" maxlength="100" required>
+                <div class="color-picker">
+                    <label for="puff-color">Choose color:</label>
+                    <input type="color" id="puff-color" value="#ffd6cc">
+                </div>
+                <div class="preview" id="puff-preview">
+                    <!-- Preview will be rendered here -->
+                </div>
+                <button type="submit">Create Puff</button>
+            </form>
+            <p class="error-message" id="customize-error"></p>
+        </div>
+    </div>
+
+    <!-- Main App View -->
+    <div id="view-app" class="view" style="display: none;">
+        <canvas id="canvas"></canvas>
+        <button id="logout-btn">Logout</button>
+    </div>
+
+    <!-- Scripts -->
     <script src="js/physics/particle.js"></script>
     <script src="js/physics/constraint.js"></script>
     <script src="js/physics/softbody.js"></script>
     <script src="js/physics/solver.js"></script>
     <script src="js/canvas.js"></script>
     <script src="js/input.js"></script>
-    <script src="js/main.js"></script>
+
+    <script src="js/api.js"></script>
+    <script src="js/router.js"></script>
+    <script src="js/views/login.js"></script>
+    <script src="js/views/register.js"></script>
+    <script src="js/views/customize.js"></script>
+    <script src="js/views/app.js"></script>
+
+    <!-- Initialize router when DOM loads -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            Router.init();
+        });
+    </script>
 </body>
 </html>

@@ -2,11 +2,11 @@
 // Large circle + 3 smaller orbiting circles (double pendulum style)
 
 class SoftBody {
-    constructor(centerX, centerY, radius, numParticles = 16) {
+    constructor(centerX, centerY, radius, numParticles = 16, customColor = null) {
         this.particles = [];
         this.constraints = [];
         this.radius = radius;
-        this.color = '#ffd6cc'; // Soft pastel pink/coral
+        this.color = customColor || '#ffd6cc'; // Use custom color or default
         this.eyeColor = '#4a4a4a'; // Dark gray for eyes
         this.baseRadius = radius;
         this.numParticles = numParticles;

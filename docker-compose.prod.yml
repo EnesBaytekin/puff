@@ -1,0 +1,61 @@
+# Docker Compose for Production
+# Usage: docker-compose -f docker-compose.prod.yml up -d
+
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: puff-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-digitoy}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - puff-network
+
+  # Backend Server (Production)
+  server:
+    image: enesbaytekin/puff-server:latest
+    container_name: puff-server
+    environment:
+      DB_HOST: db
+      DB_NAME: ${POSTGRES_DB:-digitoy}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: 3000
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - puff-network
+
+  # Frontend UI (Production)
+  ui:
+    image: enesbaytekin/puff-ui:latest
+    container_name: puff-ui
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+    networks:
+      - puff-network
+
+volumes:
+  postgres-data:
+
+networks:
+  puff-network:
+    driver: bridge

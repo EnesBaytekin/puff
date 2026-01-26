@@ -23,3 +23,163 @@ body {
     height: 100%;
     touch-action: none; /* Prevent default touch behaviors */
 }
+
+/* ==============================
+   Authentication Pages
+   ============================== */
+
+.auth-container,
+.customize-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    text-align: center;
+}
+
+.auth-container h1,
+.customize-container h1 {
+    color: #2d2d2d;
+    margin-bottom: 10px;
+    font-size: 2rem;
+}
+
+.auth-container p,
+.customize-container p {
+    color: #666;
+    margin-bottom: 30px;
+}
+
+/* Forms */
+.auth-container form,
+.customize-container form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    max-width: 300px;
+}
+
+.auth-container input[type="email"],
+.auth-container input[type="password"],
+.customize-container input[type="text"] {
+    padding: 12px 16px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.auth-container input[type="email"]:focus,
+.auth-container input[type="password"]:focus,
+.customize-container input[type="text"]:focus {
+    border-color: #ffd6cc;
+}
+
+.auth-container button,
+.customize-container button {
+    padding: 12px;
+    background-color: #ffd6cc;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.auth-container button:hover,
+.customize-container button:hover {
+    background-color: #ffc9b8;
+}
+
+.auth-container button:active,
+.customize-container button:active {
+    background-color: #ffbba5;
+}
+
+/* Links */
+.auth-container a,
+.customize-container a {
+    color: #d6a08f;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.auth-container a:hover,
+.customize-container a:hover {
+    text-decoration: underline;
+}
+
+.switch-view {
+    margin-top: 20px;
+    font-size: 0.9rem;
+}
+
+/* Error messages */
+.error-message {
+    color: #d67676;
+    font-size: 0.9rem;
+    margin-top: 10px;
+    min-height: 1.2em;
+}
+
+/* ==============================
+   Customization Page
+   ============================== */
+
+.color-picker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.color-picker label {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.color-picker input[type="color"] {
+    width: 100px;
+    height: 100px;
+    border: none;
+    cursor: pointer;
+    background: none;
+}
+
+.preview {
+    margin: 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ==============================
+   Main App View
+   ============================== */
+
+#logout-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 10px 20px;
+    background-color: rgba(245, 240, 230, 0.9);
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: #666;
+    z-index: 100;
+    transition: all 0.2s;
+}
+
+#logout-btn:hover {
+    background-color: rgba(240, 235, 225, 0.95);
+    border-color: #ccc;
+}
