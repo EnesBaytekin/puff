@@ -7,7 +7,6 @@ class SoftBody {
         this.constraints = [];
         this.radius = radius;
         this.color = customColor || '#ffd6cc'; // Use custom color or default
-        this.eyeColor = '#4a4a4a'; // Dark gray for eyes
         this.baseRadius = radius;
         this.numParticles = numParticles;
 
@@ -198,8 +197,8 @@ class SoftBody {
         ctx.fillStyle = this.color;
         ctx.fill();
 
-        // Draw outline (kendi renginin daha koyusu)
-        ctx.strokeStyle = '#d6aea3'; // Pastel pink'in daha koyu versiyonu
+        // Draw outline (darker shade of main color)
+        ctx.strokeStyle = this.getDarkerColor(this.color);
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
@@ -267,7 +266,7 @@ class SoftBody {
         const mouthY = centerY + this.mouthOffset.y;
 
         // Draw eyes (simple dots)
-        ctx.fillStyle = this.eyeColor;
+        ctx.fillStyle = this.getContrastColor();
         ctx.beginPath();
         ctx.arc(leftEyeX, leftEyeY, this.radius * 0.08, 0, Math.PI * 2);
         ctx.fill();
@@ -277,11 +276,35 @@ class SoftBody {
         ctx.fill();
 
         // Draw smile (small curve)
-        ctx.strokeStyle = this.eyeColor;
+        ctx.strokeStyle = this.getContrastColor();
         ctx.lineWidth = this.radius * 0.03;
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.arc(mouthX, mouthY - this.radius * 0.05, this.radius * 0.15, 0.2, Math.PI - 0.2);
         ctx.stroke();
+    }
+
+    // Get darker shade of the main color for border
+    getDarkerColor(hex, amount = 40) {
+        const num = parseInt(hex.slice(1), 16);
+        const r = Math.max(0, (num >> 16) - amount);
+        const g = Math.max(0, ((num >> 8) & 0x00FF) - amount);
+        const b = Math.max(0, (num & 0x0000FF) - amount);
+        return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
+    }
+
+    // Get contrast color (black or white) based on luminance
+    getContrastColor(hex = null) {
+        const color = hex || this.color;
+        const num = parseInt(color.slice(1), 16);
+        const r = (num >> 16) & 0xFF;
+        const g = (num >> 8) & 0xFF;
+        const b = num & 0xFF;
+
+        // Calculate luminance
+        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+        // Return black for light colors, white for dark colors
+        return luminance > 0.5 ? '#1a1a1a' : '#ffffff';
     }
 }
