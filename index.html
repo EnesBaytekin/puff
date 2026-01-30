@@ -61,6 +61,23 @@
     <!-- Main App View -->
     <div id="view-app" class="view" style="display: none;">
         <canvas id="canvas"></canvas>
+
+        <!-- Test Controls (for testing state changes) -->
+        <div class="test-controls">
+            <div class="slider-group">
+                <label for="hunger-slider">Fullness: <span id="hunger-value">50</span></label>
+                <input type="range" id="hunger-slider" min="0" max="100" value="50">
+            </div>
+            <div class="slider-group">
+                <label for="mood-slider">Mood: <span id="mood-value">50</span></label>
+                <input type="range" id="mood-slider" min="0" max="100" value="50">
+            </div>
+            <div class="slider-group">
+                <label for="energy-slider">Energy: <span id="energy-value">50</span></label>
+                <input type="range" id="energy-slider" min="0" max="100" value="50">
+            </div>
+        </div>
+
         <button id="logout-btn">Logout</button>
     </div>
 

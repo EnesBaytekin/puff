@@ -127,5 +127,19 @@ const API = {
         }
 
         return response.json();
+    },
+
+    async updatePuffState(state) {
+        const response = await this.request('/api/puffs/state', {
+            method: 'PUT',
+            body: JSON.stringify(state)
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to update puff state');
+        }
+
+        return response.json();
     }
 };

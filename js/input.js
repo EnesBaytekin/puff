@@ -54,10 +54,18 @@ class InputHandler {
     }
 
     // Apply continuous drag force (called every frame while holding)
+    // Energy affects how quickly the puff follows the finger (dramatically)
     continuousDrag() {
         if (this.isDragging && this.draggedParticle) {
-            // Stronger force for staying under finger
-            this.physicsSolver.applyDrag(this.draggedParticle, this.dragX, this.dragY, 0.8);
+            // Get energy from softBody state
+            const energy = this.softBody.puffState.energy || 50;
+            const energyFactor = energy / 100; // 0 = exhausted, 1 = full energy
+
+            // Low energy = very sluggish following (0.01 to 0.8 range)
+            // Very dramatic difference: exhausted puff barely moves
+            const dragStrength = 0.01 + energyFactor * 0.79;
+
+            this.physicsSolver.applyDrag(this.draggedParticle, this.dragX, this.dragY, dragStrength);
         }
     }
 

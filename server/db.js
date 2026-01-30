@@ -31,6 +31,9 @@ async function initDB() {
                 user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                 name VARCHAR(100) NOT NULL,
                 color VARCHAR(7) NOT NULL,
+                hunger INTEGER DEFAULT 50 CHECK (hunger >= 0 AND hunger <= 100),
+                mood INTEGER DEFAULT 50 CHECK (mood >= 0 AND mood <= 100),
+                energy INTEGER DEFAULT 50 CHECK (energy >= 0 AND energy <= 100),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )

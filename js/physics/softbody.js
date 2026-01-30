@@ -2,13 +2,21 @@
 // Large circle + 3 smaller orbiting circles (double pendulum style)
 
 class SoftBody {
-    constructor(centerX, centerY, radius, numParticles = 16, customColor = null) {
+    constructor(centerX, centerY, radius, numParticles = 16, customColor = null, puffState = null) {
         this.particles = [];
         this.constraints = [];
         this.radius = radius;
-        this.color = customColor || '#ffd6cc'; // Use custom color or default
+        this.baseColor = customColor || '#ffd6cc'; // Use custom color or default
+        this.color = this.baseColor;
         this.baseRadius = radius;
         this.numParticles = numParticles;
+
+        // Puff state (hunger, mood, energy) - values 0-100
+        this.puffState = puffState || {
+            hunger: 50,  // 0 = starving (dark), 100 = full (normal color)
+            mood: 50,    // 0 = very sad (melty), 100 = very happy (normal)
+            energy: 50   // 0 = exhausted (slow), 100 = full energy (fast)
+        };
 
         // YENİ SİSTEM: Büyük düzensiz daire + 6 küçük hareketli daire
         this.mainCircle = {
@@ -117,15 +125,20 @@ class SoftBody {
 
     // Update small circles (double pendulum animation)
     updateSmallCircles() {
+        const energy = this.puffState.energy || 50;
+        const energyFactor = energy / 100; // 0 = exhausted, 1 = full energy
+
         const time = Date.now() * 0.001;
 
-        // Ana yuvarlağı döndür
-        this.mainCircle.angle += this.mainCircle.rotationSpeed;
+        // Ana yuvarlağı döndür - energy affects rotation speed dramatically
+        // Low energy = very slow rotation, high energy = normal rotation
+        this.mainCircle.angle += this.mainCircle.rotationSpeed * (0.05 + energyFactor * 0.95);
 
-        // Ana yuvarlağın deformasyonunu güncelle
+        // Ana yuvarlağın deformasyonunu güncelle - energy affects movement amount dramatically
         this.mainCircle.deformPoints.forEach(point => {
-            // Yavaşça deformasyon değişsin
-            point.currentDeform = point.deform + Math.sin(time * point.speed * 1000) * 0.1;
+            // Very low energy = barely moving, high energy = normal movement
+            const movementScale = 0.002 + energyFactor * 0.118; // 0.002 to 0.12 (much more dramatic)
+            point.currentDeform = point.deform + Math.sin(time * point.speed * 1000) * movementScale;
         });
 
         // Update main circle position to follow center particle
@@ -137,22 +150,90 @@ class SoftBody {
     applyOrganicDeformation() {
         // Update main circle rotation and deformation
         this.updateSmallCircles();
+
+        // Update color based on hunger
+        this.updateColorByHunger();
+    }
+
+    // Update color based on fullness (logarithmic)
+    // 0 = starving (dark), 100 = full (normal color)
+    // Logarithmic: 0=very dark, 10=much lighter, 25=almost normal, 50+=normal
+    updateColorByHunger() {
+        const fullness = this.puffState.hunger || 50; // Still called hunger in DB but means fullness
+
+        // Logarithmic scale: rapid lightening at low values, then plateaus
+        // Using: darken = maxDarken * (1 - (fullness/50)^0.5) for 0-50 range
+        // This gives: 0→80, 10→~45, 25→~20, 50→0, 50-100→0
+
+        let darkenAmount;
+
+        if (fullness >= 50) {
+            // 50-100: essentially no darkening (normal color)
+            darkenAmount = 0;
+        } else {
+            // 0-50: logarithmic decay
+            // (fullness/50)^0.5 gives: 0→0, 10→0.45, 25→0.71, 50→1
+            const normalizedFullness = fullness / 50;
+            const logFactor = Math.sqrt(normalizedFullness); // Square root for logarithmic-like curve
+            darkenAmount = 80 * (1 - logFactor);
+        }
+
+        if (darkenAmount < 1) {
+            // Essentially normal color
+            this.color = this.baseColor;
+        } else {
+            // Apply darkening
+            this.color = this.getDarkerColor(this.baseColor, darkenAmount);
+        }
+    }
+
+    // Update puff state
+    updateState(newState) {
+        if (newState.hunger !== undefined) this.puffState.hunger = newState.hunger;
+        if (newState.mood !== undefined) this.puffState.mood = newState.mood;
+        if (newState.energy !== undefined) this.puffState.energy = newState.energy;
     }
 
     // Draw the creature on canvas
     draw(ctx) {
         const numPoints = this.mainCircle.deformPoints.length;
 
+        // Apply mood-based squishy deformation (low mood = wide and short)
+        const mood = this.puffState.mood || 50;
+        const moodFactor = (100 - mood) / 100; // 0 = happy (normal), 1 = very sad (squishy)
+
         // Yumuşak eğrilerle düzensiz şekli çiz
         // İlk noktanın orta noktasından başla
         const firstPoint = this.mainCircle.deformPoints[0];
         const lastPoint = this.mainCircle.deformPoints[numPoints - 1];
 
-        const firstDeform = (firstPoint.currentDeform || firstPoint.deform);
-        const lastDeform = (lastPoint.currentDeform || lastPoint.deform);
+        let firstDeform = (firstPoint.currentDeform || firstPoint.deform);
+        let lastDeform = (lastPoint.currentDeform || lastPoint.deform);
 
         const firstAngle = firstPoint.angle + this.mainCircle.angle;
         const lastAngle = lastPoint.angle + this.mainCircle.angle;
+
+        // Apply mood-based squishy effect to first/last points (smoothly, no sharp corners)
+        const firstSin = Math.sin(firstAngle);
+        const lastSin = Math.sin(lastAngle);
+        const firstCos = Math.cos(firstAngle);
+        const lastCos = Math.cos(lastAngle);
+
+        // Smooth horizontal expansion using cos^2 (max at sides, zero at top/bottom)
+        if (moodFactor > 0) {
+            // Expand outward at sides, shrink vertically at top/bottom
+            const horizontalExpansion = moodFactor * 0.3 * firstCos * firstCos;
+            const verticalShrink = moodFactor * 0.15 * firstSin * firstSin;
+
+            firstDeform += horizontalExpansion;
+            firstDeform -= verticalShrink;
+
+            const lastHorizontalExpansion = moodFactor * 0.3 * lastCos * lastCos;
+            const lastVerticalShrink = moodFactor * 0.15 * lastSin * lastSin;
+
+            lastDeform += lastHorizontalExpansion;
+            lastDeform -= lastVerticalShrink;
+        }
 
         const firstX = this.mainCircle.x + Math.cos(firstAngle) * this.mainCircle.radius * firstDeform;
         const firstY = this.mainCircle.y + Math.sin(firstAngle) * this.mainCircle.radius * firstDeform;
@@ -170,16 +251,44 @@ class SoftBody {
         // Her nokta için quadratic curve kullan
         for (let i = 0; i < numPoints; i++) {
             const point = this.mainCircle.deformPoints[i];
-            const deform = point.currentDeform || point.deform;
+            let deform = point.currentDeform || point.deform;
             const angle = point.angle + this.mainCircle.angle;
+
+            // Apply mood-based squishy deformation (wide and short, not tall)
+            // Smooth transition using cos^2 and sin^2 - no sharp corners
+            if (moodFactor > 0) {
+                const sinAngle = Math.sin(angle);
+                const cosAngle = Math.cos(angle);
+
+                // Expand horizontally at sides (cos^2 = max at sides, 0 at top/bottom)
+                const horizontalExpansion = moodFactor * 0.3 * cosAngle * cosAngle;
+
+                // Shrink vertically at top/bottom (sin^2 = max at top/bottom, 0 at sides)
+                const verticalShrink = moodFactor * 0.15 * sinAngle * sinAngle;
+
+                deform += horizontalExpansion;
+                deform -= verticalShrink;
+            }
 
             const x = this.mainCircle.x + Math.cos(angle) * this.mainCircle.radius * deform;
             const y = this.mainCircle.y + Math.sin(angle) * this.mainCircle.radius * deform;
 
             // Bir sonraki noktanın orta noktasını hesapla
             const nextPoint = this.mainCircle.deformPoints[(i + 1) % numPoints];
-            const nextDeform = nextPoint.currentDeform || nextPoint.deform;
+            let nextDeform = nextPoint.currentDeform || nextPoint.deform;
             const nextAngle = nextPoint.angle + this.mainCircle.angle;
+
+            // Apply mood-based deformation for next point too
+            if (moodFactor > 0) {
+                const nextSin = Math.sin(nextAngle);
+                const nextCos = Math.cos(nextAngle);
+
+                const nextHorizontalExpansion = moodFactor * 0.3 * nextCos * nextCos;
+                const nextVerticalShrink = moodFactor * 0.15 * nextSin * nextSin;
+
+                nextDeform += nextHorizontalExpansion;
+                nextDeform -= nextVerticalShrink;
+            }
 
             const nextX = this.mainCircle.x + Math.cos(nextAngle) * this.mainCircle.radius * nextDeform;
             const nextY = this.mainCircle.y + Math.sin(nextAngle) * this.mainCircle.radius * nextDeform;
@@ -275,12 +384,40 @@ class SoftBody {
         ctx.arc(rightEyeX, rightEyeY, this.radius * 0.08, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw smile (small curve)
+        // Draw mouth based on mood - narrow, cute mouth
+        // Mood 100 = very sad (downward U), Mood 50 = neutral (flat line), Mood 0 = very happy (upward U)
+        const mood = this.puffState.mood || 50;
+
         ctx.strokeStyle = this.getContrastColor();
-        ctx.lineWidth = this.radius * 0.03;
+        ctx.lineWidth = this.radius * 0.025; // Slightly thinner for cute look
         ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.arc(mouthX, mouthY - this.radius * 0.05, this.radius * 0.15, 0.2, Math.PI - 0.2);
+
+        // Fixed narrow width
+        const mouthHalfWidth = this.radius * 0.1; // Half width of mouth
+
+        if (mood >= 50) {
+            // Sad to very sad - downward U (frown)
+            // As mood goes from 50 UP TO 100, curve gets deeper (more sad)
+            const sadnessAmount = (mood - 50) / 50; // 0 to 1
+            const curveDepth = sadnessAmount * this.radius * 0.18; // Deeper curve for more n-like
+
+            // Left point (higher)
+            ctx.moveTo(mouthX - mouthHalfWidth, mouthY - curveDepth * 0.3);
+            // Curve to right point, bowing downward - control point is lower
+            ctx.quadraticCurveTo(mouthX, mouthY + curveDepth, mouthX + mouthHalfWidth, mouthY - curveDepth * 0.3);
+        } else {
+            // Happy to very happy - upward U (smile)
+            // As mood goes from 50 DOWN TO 0, curve gets deeper (more happy)
+            const happinessAmount = (50 - mood) / 50; // 0 to 1
+            const curveDepth = happinessAmount * this.radius * 0.15; // Deeper curve for more U-like
+
+            // Left point (lower)
+            ctx.moveTo(mouthX - mouthHalfWidth, mouthY + curveDepth * 0.3);
+            // Curve to right point, bowing upward - control point is higher
+            ctx.quadraticCurveTo(mouthX, mouthY - curveDepth, mouthX + mouthHalfWidth, mouthY + curveDepth * 0.3);
+        }
+
         ctx.stroke();
     }
 
