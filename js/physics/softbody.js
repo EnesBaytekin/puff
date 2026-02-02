@@ -18,6 +18,13 @@ class SoftBody {
             energy: 50   // 0 = exhausted (slow), 100 = full energy (fast)
         };
 
+        // Eating animation state
+        this.isEating = false;
+        this.eatingTimer = 0;
+        this.eatingDuration = 600; // ms
+        this.chewCount = 0;
+        this.chewMax = 3; // Number of chews
+
         // YENİ SİSTEM: Büyük düzensiz daire + 6 küçük hareketli daire
         this.mainCircle = {
             x: centerX,
@@ -194,6 +201,33 @@ class SoftBody {
         if (newState.energy !== undefined) this.puffState.energy = newState.energy;
     }
 
+    // Start eating animation
+    startEating() {
+        this.isEating = true;
+        this.eatingTimer = Date.now();
+        this.chewCount = 0;
+    }
+
+    // Update eating animation
+    updateEating() {
+        if (!this.isEating) return 0;
+
+        const elapsed = Date.now() - this.eatingTimer;
+        const chewDuration = 150; // ms per chew
+
+        if (elapsed > this.eatingDuration) {
+            this.isEating = false;
+            return 0;
+        }
+
+        // Calculate chew animation (0 to 1, oscillating)
+        this.chewCount = Math.floor(elapsed / chewDuration);
+        const chewProgress = (elapsed % chewDuration) / chewDuration;
+
+        // Return squash/stretch amount (-1 to 1)
+        return Math.sin(chewProgress * Math.PI * 2) * 0.15;
+    }
+
     // Draw the creature on canvas
     draw(ctx) {
         const numPoints = this.mainCircle.deformPoints.length;
@@ -201,6 +235,9 @@ class SoftBody {
         // Apply mood-based squishy deformation (low mood = wide and short)
         const mood = this.puffState.mood || 50;
         const moodFactor = (100 - mood) / 100; // 0 = happy (normal), 1 = very sad (squishy)
+
+        // Get eating animation squash/stretch
+        const eatingAnim = this.updateEating();
 
         // Yumuşak eğrilerle düzensiz şekli çiz
         // İlk noktanın orta noktasından başla
@@ -220,16 +257,28 @@ class SoftBody {
         const lastCos = Math.cos(lastAngle);
 
         // Smooth horizontal expansion using cos^2 (max at sides, zero at top/bottom)
-        if (moodFactor > 0) {
-            // Expand outward at sides, shrink vertically at top/bottom
-            const horizontalExpansion = moodFactor * 0.3 * firstCos * firstCos;
-            const verticalShrink = moodFactor * 0.15 * firstSin * firstSin;
+        if (moodFactor > 0 || eatingAnim !== 0) {
+            // Expand outward at sides, shrink vertically at top/bottom (mood)
+            let horizontalExpansion = moodFactor * 0.3 * firstCos * firstCos;
+            let verticalShrink = moodFactor * 0.15 * firstSin * firstSin;
+
+            // Add eating animation - chewing makes it stretch up/down
+            if (eatingAnim !== 0) {
+                // When chewing, vertical stretch
+                verticalShrink -= eatingAnim * firstSin * firstSin;
+                horizontalExpansion += eatingAnim * 0.1 * firstCos * firstCos;
+            }
 
             firstDeform += horizontalExpansion;
             firstDeform -= verticalShrink;
 
-            const lastHorizontalExpansion = moodFactor * 0.3 * lastCos * lastCos;
-            const lastVerticalShrink = moodFactor * 0.15 * lastSin * lastSin;
+            let lastHorizontalExpansion = moodFactor * 0.3 * lastCos * lastCos;
+            let lastVerticalShrink = moodFactor * 0.15 * lastSin * lastSin;
+
+            if (eatingAnim !== 0) {
+                lastVerticalShrink -= eatingAnim * lastSin * lastSin;
+                lastHorizontalExpansion += eatingAnim * 0.1 * lastCos * lastCos;
+            }
 
             lastDeform += lastHorizontalExpansion;
             lastDeform -= lastVerticalShrink;
@@ -256,15 +305,21 @@ class SoftBody {
 
             // Apply mood-based squishy deformation (wide and short, not tall)
             // Smooth transition using cos^2 and sin^2 - no sharp corners
-            if (moodFactor > 0) {
+            if (moodFactor > 0 || eatingAnim !== 0) {
                 const sinAngle = Math.sin(angle);
                 const cosAngle = Math.cos(angle);
 
                 // Expand horizontally at sides (cos^2 = max at sides, 0 at top/bottom)
-                const horizontalExpansion = moodFactor * 0.3 * cosAngle * cosAngle;
+                let horizontalExpansion = moodFactor * 0.3 * cosAngle * cosAngle;
 
                 // Shrink vertically at top/bottom (sin^2 = max at top/bottom, 0 at sides)
-                const verticalShrink = moodFactor * 0.15 * sinAngle * sinAngle;
+                let verticalShrink = moodFactor * 0.15 * sinAngle * sinAngle;
+
+                // Add eating animation
+                if (eatingAnim !== 0) {
+                    verticalShrink -= eatingAnim * sinAngle * sinAngle;
+                    horizontalExpansion += eatingAnim * 0.1 * cosAngle * cosAngle;
+                }
 
                 deform += horizontalExpansion;
                 deform -= verticalShrink;
@@ -279,12 +334,18 @@ class SoftBody {
             const nextAngle = nextPoint.angle + this.mainCircle.angle;
 
             // Apply mood-based deformation for next point too
-            if (moodFactor > 0) {
+            if (moodFactor > 0 || eatingAnim !== 0) {
                 const nextSin = Math.sin(nextAngle);
                 const nextCos = Math.cos(nextAngle);
 
-                const nextHorizontalExpansion = moodFactor * 0.3 * nextCos * nextCos;
-                const nextVerticalShrink = moodFactor * 0.15 * nextSin * nextSin;
+                let nextHorizontalExpansion = moodFactor * 0.3 * nextCos * nextCos;
+                let nextVerticalShrink = moodFactor * 0.15 * nextSin * nextSin;
+
+                // Add eating animation
+                if (eatingAnim !== 0) {
+                    nextVerticalShrink -= eatingAnim * nextSin * nextSin;
+                    nextHorizontalExpansion += eatingAnim * 0.1 * nextCos * nextCos;
+                }
 
                 nextDeform += nextHorizontalExpansion;
                 nextDeform -= nextVerticalShrink;
@@ -396,7 +457,20 @@ class SoftBody {
         // Fixed narrow width
         const mouthHalfWidth = this.radius * 0.1; // Half width of mouth
 
-        if (mood >= 50) {
+        // If eating, mouth is open/closed based on chew cycle
+        if (this.isEating) {
+            const chewOpen = (Math.abs(this.updateEating()) > 0.07);
+            if (chewOpen) {
+                // Open mouth - small oval
+                ctx.ellipse(mouthX, mouthY, mouthHalfWidth, this.radius * 0.08, 0, 0, Math.PI * 2);
+                ctx.stroke();
+            } else {
+                // Closed mouth - small line
+                ctx.moveTo(mouthX - mouthHalfWidth, mouthY);
+                ctx.lineTo(mouthX + mouthHalfWidth, mouthY);
+                ctx.stroke();
+            }
+        } else if (mood >= 50) {
             // Sad to very sad - downward U (frown)
             // As mood goes from 50 UP TO 100, curve gets deeper (more sad)
             const sadnessAmount = (mood - 50) / 50; // 0 to 1
@@ -406,6 +480,7 @@ class SoftBody {
             ctx.moveTo(mouthX - mouthHalfWidth, mouthY - curveDepth * 0.3);
             // Curve to right point, bowing downward - control point is lower
             ctx.quadraticCurveTo(mouthX, mouthY + curveDepth, mouthX + mouthHalfWidth, mouthY - curveDepth * 0.3);
+            ctx.stroke();
         } else {
             // Happy to very happy - upward U (smile)
             // As mood goes from 50 DOWN TO 0, curve gets deeper (more happy)
@@ -416,9 +491,8 @@ class SoftBody {
             ctx.moveTo(mouthX - mouthHalfWidth, mouthY + curveDepth * 0.3);
             // Curve to right point, bowing upward - control point is higher
             ctx.quadraticCurveTo(mouthX, mouthY - curveDepth, mouthX + mouthHalfWidth, mouthY + curveDepth * 0.3);
+            ctx.stroke();
         }
-
-        ctx.stroke();
     }
 
     // Get darker shade of the main color for border

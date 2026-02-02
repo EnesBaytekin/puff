@@ -4,6 +4,7 @@ const AppView = {
     creature: null,
     physicsSolver: null,
     inputHandler: null,
+    foodDragHandler: null,
     animationFrameId: null,
     isPanelOpen: false,
 
@@ -49,6 +50,9 @@ const AppView = {
         // Setup status panel
         this.setupStatusPanel(puffState);
 
+        // Initialize food drag handler (after status panel setup)
+        this.foodDragHandler = new FoodDragHandler(this);
+
         // Start the game loop
         this.startLoop();
     },
@@ -61,6 +65,8 @@ const AppView = {
         toggleBtn.addEventListener('click', () => {
             this.isPanelOpen = !this.isPanelOpen;
             if (this.isPanelOpen) {
+                // Close food panel when opening status panel
+                this.closeFoodPanel();
                 toggleBtn.classList.add('open');
                 statusPanel.classList.add('open');
             } else {
@@ -71,6 +77,12 @@ const AppView = {
 
         // Update progress bars with initial values
         this.updateProgressBars(initialState);
+    },
+
+    closeFoodPanel() {
+        if (this.foodDragHandler) {
+            this.foodDragHandler.closeFoodPanel();
+        }
     },
 
     updateProgressBars(state) {
