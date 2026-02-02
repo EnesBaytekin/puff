@@ -5,6 +5,7 @@ const AppView = {
     physicsSolver: null,
     inputHandler: null,
     animationFrameId: null,
+    isPanelOpen: false,
 
     init(puffData) {
         // Clean up previous instance if exists
@@ -45,59 +46,41 @@ const AppView = {
             };
         }
 
-        // Setup test sliders
-        this.setupTestSliders(puffState);
+        // Setup status panel
+        this.setupStatusPanel(puffState);
 
         // Start the game loop
         this.startLoop();
     },
 
-    setupTestSliders(initialState) {
-        const hungerSlider = document.getElementById('hunger-slider');
-        const moodSlider = document.getElementById('mood-slider');
-        const energySlider = document.getElementById('energy-slider');
-        const hungerValue = document.getElementById('hunger-value');
-        const moodValue = document.getElementById('mood-value');
-        const energyValue = document.getElementById('energy-value');
+    setupStatusPanel(initialState) {
+        const toggleBtn = document.getElementById('status-toggle-btn');
+        const statusPanel = document.getElementById('status-panel');
 
-        // Set initial values
-        hungerSlider.value = initialState.hunger;
-        moodSlider.value = initialState.mood;
-        energySlider.value = initialState.energy;
-        hungerValue.textContent = initialState.hunger;
-        moodValue.textContent = initialState.mood;
-        energyValue.textContent = initialState.energy;
+        // Toggle panel
+        toggleBtn.addEventListener('click', () => {
+            this.isPanelOpen = !this.isPanelOpen;
+            if (this.isPanelOpen) {
+                toggleBtn.classList.add('open');
+                statusPanel.classList.add('open');
+            } else {
+                toggleBtn.classList.remove('open');
+                statusPanel.classList.remove('open');
+            }
+        });
 
-        // Helper function to update state with debounce
-        let updateTimeout = null;
-        const updateState = () => {
-            const newState = {
-                hunger: parseInt(hungerSlider.value),
-                mood: parseInt(moodSlider.value),
-                energy: parseInt(energySlider.value)
-            };
+        // Update progress bars with initial values
+        this.updateProgressBars(initialState);
+    },
 
-            // Update display values
-            hungerValue.textContent = newState.hunger;
-            moodValue.textContent = newState.mood;
-            energyValue.textContent = newState.energy;
+    updateProgressBars(state) {
+        const hungerBar = document.getElementById('hunger-bar');
+        const moodBar = document.getElementById('mood-bar');
+        const energyBar = document.getElementById('energy-bar');
 
-            // Update creature immediately for visual feedback
-            this.creature.updateState(newState);
-
-            // Debounced API call
-            clearTimeout(updateTimeout);
-            updateTimeout = setTimeout(() => {
-                API.updatePuffState(newState).catch(err => {
-                    console.error('Failed to update puff state:', err);
-                });
-            }, 500);
-        };
-
-        // Add event listeners
-        hungerSlider.addEventListener('input', updateState);
-        moodSlider.addEventListener('input', updateState);
-        energySlider.addEventListener('input', updateState);
+        if (hungerBar) hungerBar.style.width = state.hunger + '%';
+        if (moodBar) moodBar.style.width = state.mood + '%';
+        if (energyBar) energyBar.style.width = state.energy + '%';
     },
 
     startLoop() {

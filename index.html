@@ -62,19 +62,34 @@
     <div id="view-app" class="view" style="display: none;">
         <canvas id="canvas"></canvas>
 
-        <!-- Test Controls (for testing state changes) -->
-        <div class="test-controls">
-            <div class="slider-group">
-                <label for="hunger-slider">Fullness: <span id="hunger-value">50</span></label>
-                <input type="range" id="hunger-slider" min="0" max="100" value="50">
+        <!-- Status Panel Toggle Button -->
+        <button id="status-toggle-btn" class="status-toggle-btn">
+            <span class="toggle-icon">☰</span>
+            <span class="toggle-text">Status</span>
+        </button>
+
+        <!-- Status Panel (collapsible) -->
+        <div class="status-panel" id="status-panel">
+            <div class="status-header">
+                <span>Puff Status</span>
             </div>
-            <div class="slider-group">
-                <label for="mood-slider">Mood: <span id="mood-value">50</span></label>
-                <input type="range" id="mood-slider" min="0" max="100" value="50">
+            <div class="status-item">
+                <label>Fullness</label>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="hunger-bar"></div>
+                </div>
             </div>
-            <div class="slider-group">
-                <label for="energy-slider">Energy: <span id="energy-value">50</span></label>
-                <input type="range" id="energy-slider" min="0" max="100" value="50">
+            <div class="status-item">
+                <label>Mood</label>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="mood-bar"></div>
+                </div>
+            </div>
+            <div class="status-item">
+                <label>Energy</label>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="energy-bar"></div>
+                </div>
             </div>
         </div>
 
