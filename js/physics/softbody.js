@@ -12,10 +12,11 @@ class SoftBody {
         this.numParticles = numParticles;
 
         // Puff state (hunger, mood, energy) - values 0-100
-        this.puffState = puffState || {
-            hunger: 50,  // 0 = starving (dark), 100 = full (normal color)
-            mood: 50,    // 0 = very sad (melty), 100 = very happy (normal)
-            energy: 50   // 0 = exhausted (slow), 100 = full energy (fast)
+        // Handle null values from database
+        this.puffState = {
+            hunger: puffState?.hunger ?? 50,  // 0 = starving (dark), 100 = full (normal color)
+            mood: puffState?.mood ?? 50,      // 0 = very sad (melty), 100 = very happy (normal)
+            energy: puffState?.energy ?? 50   // 0 = exhausted (slow), 100 = full energy (fast)
         };
 
         // Eating animation state

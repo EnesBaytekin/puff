@@ -20,11 +20,11 @@ const AppView = {
         const centerY = this.canvas.getHeight() / 2;
         const radius = Math.min(this.canvas.getWidth(), this.canvas.getHeight()) * 0.15;
 
-        // Extract puff state or use defaults
+        // Extract puff state or use defaults (handle null values)
         const puffState = {
-            hunger: puffData.hunger || 50,
-            mood: puffData.mood || 50,
-            energy: puffData.energy || 50
+            hunger: puffData.hunger ?? 50,
+            mood: puffData.mood ?? 50,
+            energy: puffData.energy ?? 50
         };
 
         this.creature = new SoftBody(centerX, centerY, radius, 20, puffData.color, puffState);
@@ -90,9 +90,14 @@ const AppView = {
         const moodBar = document.getElementById('mood-bar');
         const energyBar = document.getElementById('energy-bar');
 
-        if (hungerBar) hungerBar.style.width = state.hunger + '%';
-        if (moodBar) moodBar.style.width = state.mood + '%';
-        if (energyBar) energyBar.style.width = state.energy + '%';
+        // Handle null/undefined values - default to 50
+        const hunger = state.hunger ?? 50;
+        const mood = state.mood ?? 50;
+        const energy = state.energy ?? 50;
+
+        if (hungerBar) hungerBar.style.width = hunger + '%';
+        if (moodBar) moodBar.style.width = mood + '%';
+        if (energyBar) energyBar.style.width = energy + '%';
     },
 
     startLoop() {
