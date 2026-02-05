@@ -1,7 +1,6 @@
-# Docker Compose for Local Development
-# Usage: docker-compose -f docker-compose.dev.yml up
-
-version: '3.8'
+# Docker Compose for Development
+# Builds images locally from source
+# Usage: docker-compose -f docker-compose.dev.yml up --build
 
 services:
   # PostgreSQL Database
@@ -9,22 +8,23 @@ services:
     image: postgres:16-alpine
     container_name: puff-db-dev
     environment:
-      POSTGRES_DB: digitoy
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-puff}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data-dev:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - puff-network
 
-  # Backend Server (Development)
+  # Backend Server (Development - Build from source)
   server:
     build:
       context: .
@@ -32,23 +32,21 @@ services:
     container_name: puff-server-dev
     environment:
       DB_HOST: db
-      DB_NAME: digitoy
-      DB_USER: postgres
-      DB_PASSWORD: postgres
-      JWT_SECRET: dev-secret-key-change-in-production
+      DB_NAME: ${POSTGRES_DB:-puff}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-key-change-in-production}
       PORT: 3000
     ports:
       - "3000:3000"
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./server:/app/server:ro
-      - /app/node_modules
+    restart: unless-stopped
     networks:
       - puff-network
 
-  # Frontend UI (Development)
+  # Frontend UI (Development - Build from source)
   ui:
     build:
       context: .
@@ -58,6 +56,7 @@ services:
       - "8080:80"
     depends_on:
       - server
+    restart: unless-stopped
     networks:
       - puff-network
 

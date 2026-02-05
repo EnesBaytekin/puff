@@ -41,12 +41,15 @@ const AppView = {
         this.inputHandler = new InputHandler(this.canvas, this.creature, this.physicsSolver);
 
         // Initialize StateManager (handles decay, sync, etc.)
-        this.stateManager = new StateManager(this, puffState);
+        // Skip localStorage on first load to get fresh data from server
+        this.stateManager = new StateManager(this, puffState, true);
 
         // Fetch latest state from server (with offline decay)
         this.stateManager.fetchFromServer().then((state) => {
             if (state) {
+                // Update creature state
                 this.creature.updateState(state);
+                // Update progress bars
                 this.updateProgressBars(state);
             }
         });

@@ -1,7 +1,7 @@
 // State Manager - Handles local storage, offline sync, and decay
 
 class StateManager {
-    constructor(appView, initialState = null) {
+    constructor(appView, initialState = null, skipLocalStorage = false) {
         this.appView = appView;
         this.currentState = initialState || {
             hunger: 50,
@@ -14,6 +14,7 @@ class StateManager {
         this.decayInterval = null;
         this.activeEffects = []; // Active food effects (crash, protein, etc.)
         this.storageKey = null; // User-specific storage key
+        this.skipLocalStorage = skipLocalStorage; // Skip localStorage on first load
 
         this.init();
     }
@@ -22,8 +23,10 @@ class StateManager {
         // Get user-specific storage key from token
         this.setupStorageKey();
 
-        // Load from localStorage
-        this.loadFromStorage();
+        // Load from localStorage (skip if first load to get fresh data from server)
+        if (!this.skipLocalStorage) {
+            this.loadFromStorage();
+        }
 
         // Setup online/offline listeners
         window.addEventListener('online', () => this.onOnline());
@@ -117,9 +120,16 @@ class StateManager {
             this.pendingChanges = [];
 
             this.saveToStorage();
+
+            // Update UI with fresh state
+            this.updateUI();
+
             return this.currentState;
         } catch (err) {
             console.error('Failed to fetch from server:', err);
+            // Try to load from localStorage as fallback
+            this.loadFromStorage();
+            this.updateUI();
             // Return cached state if available
             return this.currentState;
         }
