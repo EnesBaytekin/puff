@@ -21,3 +21,6 @@ npm-debug.log*
 # Build output
 dist/
 build/
+
+# Release artifacts
+release/

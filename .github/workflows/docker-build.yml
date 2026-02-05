@@ -73,13 +73,66 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Create GitHub Release
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Generate release docker-compose.yml
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          mkdir -p release
+          sed "s/{VERSION}/$VERSION/g" docker-compose.release.yml > release/docker-compose.yml
+
+      - name: Create GitHub Release with sample .env
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            docker-compose.yml
-          generate_release_notes: true
-          draft: false
-          prerelease: false
+            release/docker-compose.yml
+        body: |
+          ## 🎮 Puff Virtual Pet - v${{ steps.version.outputs.version }}
+
+          ### 🚀 Quick Start
+
+          1. Download `docker-compose.yml` from the assets below
+
+          2. Create a `.env` file in the same directory:
+          ```env
+          # Database Configuration
+          POSTGRES_DB=puff
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=your_secure_password_here
+
+          # JWT Secret (for authentication)
+          JWT_SECRET=your_jwt_secret_here
+          ```
+
+          3. Start the application:
+          ```bash
+          docker-compose up -d
+          ```
+
+          4. Open your browser to `http://localhost`
+
+          ### 📦 What's Included
+
+          - **puff-ui**: Frontend web application
+          - **puff-server**: Backend API server
+          - **PostgreSQL**: Database for user and puff data
+
+          ### 🔧 Configuration
+
+          The application uses the following default ports:
+          - **UI**: Port 80 (HTTP)
+          - **Server**: Port 3000 (internal)
+          - **Database**: Port 5432 (internal)
+
+          ### 📖 Documentation
+
+          For full documentation, visit: https://github.com/enesbaytekin/puff
+
+          ---
+          **Note**: This release uses version tags (`v${{ steps.version.outputs.version }}`) for all Docker images.
+        draft: false
+        prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

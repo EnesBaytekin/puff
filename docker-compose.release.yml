@@ -1,4 +1,4 @@
-# Puff - Virtual Pet
+# Puff - Virtual Pet (Release Version: {VERSION})
 # Quick start: docker-compose up -d
 # Documentation: https://github.com/enesbaytekin/puff
 
@@ -24,7 +24,7 @@ services:
 
   # Backend Server
   server:
-    image: enesbaytekin/puff-server:latest
+    image: enesbaytekin/puff-server:{VERSION}
     container_name: puff-server
     environment:
       DB_HOST: db
@@ -40,7 +40,7 @@ services:
 
   # Frontend UI
   ui:
-    image: enesbaytekin/puff-ui:latest
+    image: enesbaytekin/puff-ui:{VERSION}
     container_name: puff-ui
     ports:
       - "80:80"

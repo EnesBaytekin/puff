@@ -2,7 +2,7 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
     host: process.env.DB_HOST || 'localhost',
-    database: process.env.DB_NAME || 'digitoy',
+    database: process.env.DB_NAME || 'puff',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     max: 20
