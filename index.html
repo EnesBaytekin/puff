@@ -10,6 +10,14 @@
 <body>
     <!-- Login View -->
     <div id="view-login" class="view" style="display: none;">
+        <!-- Settings Button (top-right) -->
+        <div class="auth-controls">
+            <button id="settings-toggle-btn-login" class="control-btn menu-btn">
+                <span class="btn-icon">⚙️</span>
+                <span class="btn-text">Settings</span>
+            </button>
+        </div>
+
         <div class="auth-container">
             <h1>Welcome to Digitoy</h1>
             <p>Your calm, digital companion</p>
@@ -25,6 +33,14 @@
 
     <!-- Register View -->
     <div id="view-register" class="view" style="display: none;">
+        <!-- Settings Button (top-right) -->
+        <div class="auth-controls">
+            <button id="settings-toggle-btn-register" class="control-btn menu-btn">
+                <span class="btn-icon">⚙️</span>
+                <span class="btn-text">Settings</span>
+            </button>
+        </div>
+
         <div class="auth-container">
             <h1>Create Account</h1>
             <p>Join and create your own puff</p>
@@ -40,6 +56,14 @@
 
     <!-- Customize Puff View -->
     <div id="view-customize" class="view" style="display: none;">
+        <!-- Settings Button (top-right) -->
+        <div class="auth-controls">
+            <button id="settings-toggle-btn-customize" class="control-btn menu-btn">
+                <span class="btn-icon">⚙️</span>
+                <span class="btn-text">Settings</span>
+            </button>
+        </div>
+
         <div class="customize-container">
             <h1>Create Your Puff</h1>
             <p>Give your puff a name and color</p>
@@ -64,6 +88,11 @@
 
         <!-- Top Right Controls -->
         <div class="top-controls">
+            <button id="settings-toggle-btn" class="control-btn menu-btn">
+                <span class="btn-icon">⚙️</span>
+                <span class="btn-text">Settings</span>
+            </button>
+
             <button id="logout-btn" class="control-btn">
                 <span class="btn-icon">🚪</span>
                 <span class="btn-text">Logout</span>
@@ -139,6 +168,37 @@
         <div class="dragged-food" id="dragged-food" style="display: none;"></div>
     </div>
 
+    <!-- Global Settings Panel (available on all pages) -->
+    <div class="panel-overlay" id="settings-overlay"></div>
+    <div class="panel settings-panel" id="settings-panel">
+        <div class="panel-header">
+            <h2>Settings</h2>
+            <button class="close-btn" data-target="settings">✕</button>
+        </div>
+        <div class="panel-content">
+            <div class="setting-item">
+                <div class="setting-label">
+                    <span>🎨</span>
+                    <span>Theme</span>
+                </div>
+                <div class="theme-toggle-buttons">
+                    <button class="theme-btn" data-theme="light">
+                        <span class="theme-icon">☀️</span>
+                        <span class="theme-text">Light</span>
+                    </button>
+                    <button class="theme-btn" data-theme="dark">
+                        <span class="theme-icon">🌙</span>
+                        <span class="theme-text">Dark</span>
+                    </button>
+                    <button class="theme-btn" data-theme="auto">
+                        <span class="theme-icon">🔄</span>
+                        <span class="theme-text">Auto</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="js/physics/particle.js"></script>
     <script src="js/physics/constraint.js"></script>
@@ -148,6 +208,8 @@
     <script src="js/input.js"></script>
     <script src="js/stateManager.js"></script>
     <script src="js/food.js"></script>
+    <script src="js/themeManager.js"></script>
+    <script src="js/globalSettings.js"></script>
 
     <script src="js/api.js"></script>
     <script src="js/router.js"></script>
@@ -159,6 +221,11 @@
     <!-- Initialize router when DOM loads -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // Initialize theme manager first
+            ThemeManager.init();
+            // Initialize global settings (works on all pages)
+            GlobalSettings.init();
+            // Then initialize router
             Router.init();
         });
     </script>

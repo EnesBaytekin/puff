@@ -100,8 +100,9 @@ const AppView = {
     },
 
     openStatusPanel() {
-        // Close food panel first
+        // Close food panel and settings panel first
         this.closeFoodPanel();
+        this.closeSettingsPanel();
 
         const toggleBtn = document.getElementById('status-toggle-btn');
         const overlay = document.getElementById('status-overlay');
@@ -111,6 +112,17 @@ const AppView = {
         overlay.classList.add('active');
         panel.classList.add('active');
         this.isPanelOpen = true;
+    },
+
+    closeSettingsPanel() {
+        // Global settings panel
+        const overlay = document.getElementById('settings-overlay');
+        const panel = document.getElementById('settings-panel');
+        const buttons = document.querySelectorAll('[id^="settings-toggle-btn"]');
+
+        if (overlay) overlay.classList.remove('active');
+        if (panel) panel.classList.remove('active');
+        buttons.forEach(btn => btn.classList.remove('active'));
     },
 
     closeStatusPanel() {

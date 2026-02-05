@@ -100,6 +100,18 @@ const API = {
     logout() {
         this.removeToken();
         this.removeUserId();
+
+        // Clear all form fields
+        const loginEmail = document.getElementById('login-email');
+        const loginPassword = document.getElementById('login-password');
+        const registerEmail = document.getElementById('register-email');
+        const registerPassword = document.getElementById('register-password');
+
+        if (loginEmail) loginEmail.value = '';
+        if (loginPassword) loginPassword.value = '';
+        if (registerEmail) registerEmail.value = '';
+        if (registerPassword) registerPassword.value = '';
+
         Router.navigate('login');
     },
 
