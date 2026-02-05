@@ -74,24 +74,54 @@ const AppView = {
 
     setupStatusPanel(initialState) {
         const toggleBtn = document.getElementById('status-toggle-btn');
+        const statusOverlay = document.getElementById('status-overlay');
         const statusPanel = document.getElementById('status-panel');
 
-        // Toggle panel
+        // Open status panel
         toggleBtn.addEventListener('click', () => {
-            this.isPanelOpen = !this.isPanelOpen;
-            if (this.isPanelOpen) {
-                // Close food panel when opening status panel
-                this.closeFoodPanel();
-                toggleBtn.classList.add('open');
-                statusPanel.classList.add('open');
-            } else {
-                toggleBtn.classList.remove('open');
-                statusPanel.classList.remove('open');
-            }
+            this.openStatusPanel();
+        });
+
+        // Close button handler
+        const closeBtn = statusPanel.querySelector('.close-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                this.closeStatusPanel();
+            });
+        }
+
+        // Overlay click handler
+        statusOverlay.addEventListener('click', () => {
+            this.closeStatusPanel();
         });
 
         // Update progress bars with initial values
         this.updateProgressBars(initialState);
+    },
+
+    openStatusPanel() {
+        // Close food panel first
+        this.closeFoodPanel();
+
+        const toggleBtn = document.getElementById('status-toggle-btn');
+        const overlay = document.getElementById('status-overlay');
+        const panel = document.getElementById('status-panel');
+
+        if (toggleBtn) toggleBtn.classList.add('active');
+        overlay.classList.add('active');
+        panel.classList.add('active');
+        this.isPanelOpen = true;
+    },
+
+    closeStatusPanel() {
+        const toggleBtn = document.getElementById('status-toggle-btn');
+        const overlay = document.getElementById('status-overlay');
+        const panel = document.getElementById('status-panel');
+
+        if (toggleBtn) toggleBtn.classList.remove('active');
+        overlay.classList.remove('active');
+        panel.classList.remove('active');
+        this.isPanelOpen = false;
     },
 
     closeFoodPanel() {
@@ -151,6 +181,23 @@ const AppView = {
             this.stateManager.cleanup();
             this.stateManager = null;
         }
+
+        // Close panels
+        const statusOverlay = document.getElementById('status-overlay');
+        const foodOverlay = document.getElementById('food-overlay');
+        const statusPanel = document.getElementById('status-panel');
+        const foodPanel = document.getElementById('food-panel');
+        const statusToggleBtn = document.getElementById('status-toggle-btn');
+        const foodToggleBtn = document.getElementById('food-toggle-btn');
+
+        if (statusOverlay) statusOverlay.classList.remove('active');
+        if (foodOverlay) foodOverlay.classList.remove('active');
+        if (statusPanel) statusPanel.classList.remove('active');
+        if (foodPanel) foodPanel.classList.remove('active');
+        if (statusToggleBtn) statusToggleBtn.classList.remove('active');
+        if (foodToggleBtn) foodToggleBtn.classList.remove('active');
+
+        this.isPanelOpen = false;
 
         // Clear canvas if exists
         if (this.canvas) {

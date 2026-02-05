@@ -90,30 +90,37 @@ class FoodDragHandler {
 
     setupFoodToggle() {
         const toggleBtn = document.getElementById('food-toggle-btn');
+        const foodOverlay = document.getElementById('food-overlay');
         const foodPanel = document.getElementById('food-panel');
 
+        // Open food panel
         toggleBtn.addEventListener('click', () => {
-            this.foodPanelOpen = !this.foodPanelOpen;
-            if (this.foodPanelOpen) {
-                // Close status panel when opening food panel
-                this.closeStatusPanel();
-                toggleBtn.classList.add('open');
-                foodPanel.classList.add('open');
-            } else {
-                toggleBtn.classList.remove('open');
-                foodPanel.classList.remove('open');
-            }
+            this.openFoodPanel();
+        });
+
+        // Close button handler
+        const closeBtn = foodPanel.querySelector('.close-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                this.closeFoodPanel();
+            });
+        }
+
+        // Overlay click handler
+        foodOverlay.addEventListener('click', () => {
+            this.closeFoodPanel();
         });
     }
 
     closeStatusPanel() {
         const statusToggleBtn = document.getElementById('status-toggle-btn');
+        const statusOverlay = document.getElementById('status-overlay');
         const statusPanel = document.getElementById('status-panel');
-        if (statusToggleBtn && statusPanel) {
-            statusToggleBtn.classList.remove('open');
-            statusPanel.classList.remove('open');
-            this.appView.isPanelOpen = false;
-        }
+
+        if (statusToggleBtn) statusToggleBtn.classList.remove('active');
+        if (statusOverlay) statusOverlay.classList.remove('active');
+        if (statusPanel) statusPanel.classList.remove('active');
+        if (this.appView) this.appView.isPanelOpen = false;
     }
 
     setupFoodSlots() {
@@ -339,16 +346,25 @@ class FoodDragHandler {
     closeFoodPanel() {
         this.foodPanelOpen = false;
         const toggleBtn = document.getElementById('food-toggle-btn');
-        const foodPanel = document.getElementById('food-panel');
-        toggleBtn.classList.remove('open');
-        foodPanel.classList.remove('open');
+        const overlay = document.getElementById('food-overlay');
+        const panel = document.getElementById('food-panel');
+
+        if (toggleBtn) toggleBtn.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
+        if (panel) panel.classList.remove('active');
     }
 
     openFoodPanel() {
+        // Close status panel first
+        this.closeStatusPanel();
+
         this.foodPanelOpen = true;
         const toggleBtn = document.getElementById('food-toggle-btn');
-        const foodPanel = document.getElementById('food-panel');
-        toggleBtn.classList.add('open');
-        foodPanel.classList.add('open');
+        const overlay = document.getElementById('food-overlay');
+        const panel = document.getElementById('food-panel');
+
+        if (toggleBtn) toggleBtn.classList.add('active');
+        if (overlay) overlay.classList.add('active');
+        if (panel) panel.classList.add('active');
     }
 }

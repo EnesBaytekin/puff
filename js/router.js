@@ -34,6 +34,11 @@ const Router = {
     },
 
     navigate(route, pushState = true) {
+        // Cleanup previous view (if it was app view)
+        if (this.currentRoute === 'app' && route !== 'app') {
+            AppView.cleanup();
+        }
+
         this.currentRoute = route;
 
         // Hide all views
