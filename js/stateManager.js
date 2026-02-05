@@ -108,7 +108,10 @@ class StateManager {
     // Fetch fresh state from server (with offline decay)
     async fetchFromServer() {
         try {
-            const puffData = await API.getPuff();
+            console.log('[StateManager] Fetching from server...');
+            const puffData = await API.getMyPuff();
+            console.log('[StateManager] Server response:', puffData);
+
             this.currentState = {
                 hunger: puffData.hunger,
                 mood: puffData.mood,
@@ -121,6 +124,7 @@ class StateManager {
 
             this.saveToStorage();
 
+            console.log('[StateManager] Updating UI with state:', this.currentState);
             // Update UI with fresh state
             this.updateUI();
 
@@ -341,13 +345,21 @@ class StateManager {
 
     // Update UI progress bars and creature state
     updateUI() {
-        if (!this.currentState || !this.appView.creature) return;
+        console.log('[StateManager] updateUI called, currentState:', this.currentState);
+        console.log('[StateManager] appView.creature:', this.appView?.creature);
+
+        if (!this.currentState || !this.appView.creature) {
+            console.warn('[StateManager] Cannot update UI - missing state or creature');
+            return;
+        }
 
         // Update progress bars
         this.appView.updateProgressBars(this.currentState);
 
         // Update creature state
         this.appView.creature.updateState(this.currentState);
+
+        console.log('[StateManager] UI updated successfully');
     }
 
     // Get current state
