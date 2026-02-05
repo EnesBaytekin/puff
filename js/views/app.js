@@ -5,6 +5,7 @@ const AppView = {
     physicsSolver: null,
     inputHandler: null,
     foodDragHandler: null,
+    stateManager: null,
     animationFrameId: null,
     isPanelOpen: false,
 
@@ -38,6 +39,17 @@ const AppView = {
 
         // Initialize input handler
         this.inputHandler = new InputHandler(this.canvas, this.creature, this.physicsSolver);
+
+        // Initialize StateManager (handles decay, sync, etc.)
+        this.stateManager = new StateManager(this, puffState);
+
+        // Fetch latest state from server (with offline decay)
+        this.stateManager.fetchFromServer().then((state) => {
+            if (state) {
+                this.creature.updateState(state);
+                this.updateProgressBars(state);
+            }
+        });
 
         // Setup logout button
         const logoutBtn = document.getElementById('logout-btn');
@@ -129,6 +141,12 @@ const AppView = {
         if (this.animationFrameId) {
             cancelAnimationFrame(this.animationFrameId);
             this.animationFrameId = null;
+        }
+
+        // Stop StateManager decay loop
+        if (this.stateManager) {
+            this.stateManager.cleanup();
+            this.stateManager = null;
         }
 
         // Clear canvas if exists

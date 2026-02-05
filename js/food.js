@@ -2,33 +2,67 @@
 
 // Food class - represents a single food item
 class Food {
-    constructor(id, name, emoji, hungerBonus, moodBonus = 0, energyBonus = 0) {
+    constructor(id, name, emoji, hungerBonus, moodBonus = 0, energyBonus = 0, effect = null) {
         this.id = id;
         this.name = name;
         this.emoji = emoji;
         this.hungerBonus = hungerBonus; // How much fullness it gives
         this.moodBonus = moodBonus;     // How much mood it gives
         this.energyBonus = energyBonus; // How much energy it gives
+        this.effect = effect;           // Special effect (crash, protein, etc.)
     }
 }
 
 // Food Inventory - manages available foods
 class FoodInventory {
     constructor() {
-        // Default food items
+        // Default food items with effects
         this.foods = [
+            // Normal foods (no special effects)
             new Food(1, 'Apple', '🍎', 15, 5, 0),
-            new Food(2, 'Cake', '🍰', 25, 15, 5),
-            new Food(3, 'Fish', '🐟', 20, 0, 10),
-            new Food(4, 'Cookie', '🍪', 10, 20, 0),
+            new Food(3, 'Fish', '🐟', 20, 0, 10, {
+                type: 'energy_decay',
+                multiplier: 0.5,      // Slow energy decay
+                duration: 600000,     // 10 minutes
+                name: 'Protein Boost'
+            }),
             new Food(5, 'Pizza', '🍕', 30, 10, 5),
-            new Food(6, 'Ice Cream', '🍦', 15, 25, 0),
             new Food(7, 'Sandwich', '🥪', 25, 5, 15),
-            new Food(8, 'Donut', '🍩', 20, 15, 0),
             new Food(9, 'Burger', '🍔', 30, 10, 10),
-            new Food(10, 'Carrot', '🥕', 10, 0, 5),
+            new Food(10, 'Carrot', '🥕', 10, 0, 5, {
+                type: 'energy_decay',
+                multiplier: 0.7,      // Slow energy decay (less than fish)
+                duration: 600000,     // 10 minutes
+                name: 'Healthy Snack'
+            }),
             new Food(11, 'Banana', '🍌', 15, 5, 10),
             new Food(12, 'Chicken', '🍗', 25, 5, 15),
+
+            // Sweet foods (crash effect!)
+            new Food(2, 'Cake', '🍰', 25, 15, 5, {
+                type: 'mood_decay',
+                multiplier: 2.0,      // 2x mood decay
+                duration: 300000,     // 5 minutes
+                name: 'Sugar Crash'
+            }),
+            new Food(4, 'Cookie', '🍪', 10, 20, 0, {
+                type: 'mood_decay',
+                multiplier: 1.5,      // 1.5x mood decay
+                duration: 180000,     // 3 minutes
+                name: 'Mini Crash'
+            }),
+            new Food(6, 'Ice Cream', '🍦', 15, 25, 0, {
+                type: 'mood_decay',
+                multiplier: 2.5,      // 2.5x mood decay (very strong!)
+                duration: 240000,     // 4 minutes
+                name: 'Brain Freeze'
+            }),
+            new Food(8, 'Donut', '🍩', 20, 15, 0, {
+                type: 'mood_decay',
+                multiplier: 1.8,      // 1.8x mood decay
+                duration: 270000,     // 4.5 minutes
+                name: 'Sugar Rush'
+            }),
         ];
     }
 
@@ -194,9 +228,10 @@ class FoodDragHandler {
             this.openFoodPanel();
         }
 
-        // Hide dragged element
+        // Hide dragged element immediately
         if (this.draggedElement) {
             this.draggedElement.style.display = 'none';
+            this.draggedElement.textContent = '';
         }
 
         this.isDragging = false;
@@ -235,8 +270,15 @@ class FoodDragHandler {
         // Trigger eating animation
         this.appView.creature.startEating();
 
-        // Update puff state
-        const currentState = this.appView.creature.puffState;
+        // Get current state safely
+        let currentState;
+        if (this.appView.stateManager && this.appView.stateManager.currentState) {
+            currentState = this.appView.stateManager.getState();
+        } else {
+            // Fallback to creature state
+            currentState = this.appView.creature.puffState;
+        }
+
         const newState = {
             hunger: Math.min(100, currentState.hunger + food.hungerBonus),
             mood: Math.min(100, currentState.mood + food.moodBonus),
@@ -244,12 +286,23 @@ class FoodDragHandler {
         };
 
         this.appView.creature.updateState(newState);
-        this.appView.updateProgressBars(newState);
 
-        // Save to server
-        API.updatePuffState(newState).catch(err => {
-            console.error('Failed to update puff state:', err);
-        });
+        // Apply food effect if exists
+        if (food.effect && this.appView.stateManager) {
+            this.appView.stateManager.addEffect(food.effect);
+            console.log(`Applied effect: ${food.effect.name}`);
+        }
+
+        // Update through StateManager (handles sync)
+        if (this.appView.stateManager) {
+            this.appView.stateManager.updateState(newState);
+        } else {
+            // Fallback
+            API.updatePuffState(newState).catch(err => {
+                console.error('Failed to update puff state:', err);
+            });
+            this.appView.updateProgressBars(newState);
+        }
     }
 
     createEatingParticles() {
