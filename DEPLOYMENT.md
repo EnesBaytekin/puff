@@ -1,4 +1,4 @@
-# Digitoy - Docker Deployment Guide
+# Puff - Docker Deployment Guide
 
 ## Quick Start (Production)
 
@@ -6,40 +6,46 @@
 - Docker
 - Docker Compose
 
-### Step 1: Create Environment File
+### Step 1: Get docker-compose.yml
 
-Create a `.env` file in the project root:
+Download `docker-compose.yml` from the [latest GitHub Release](https://github.com/enesbaytekin/puff/releases/latest)
 
-```bash
-cp .env.example .env
-```
+**Note:** Release'daki docker-compose.yml dosyası versiyon tag'li Docker imajları kullanır (örn: `v1.0.4`)
 
-Edit `.env` and set secure values:
+### Step 2: Create Environment File
+
+Create a `.env` file in the same directory as `docker-compose.yml`:
 
 ```env
 # Database Configuration
-POSTGRES_DB=digitoy
+POSTGRES_DB=puff
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=CHANGE_THIS_SECURE_PASSWORD
+POSTGRES_PASSWORD=your_secure_password_here
 
 # JWT Secret (CHANGE THIS!)
-JWT_SECRET=CHANGE_THIS_SUPER_SECRET_JWT_KEY
+JWT_SECRET=your_jwt_secret_here
 ```
 
-### Step 2: Deploy with Docker Compose
+**Generate secure passwords:**
+```bash
+# Generate database password
+openssl rand -base64 32
+
+# Generate JWT secret
+openssl rand -hex 32
+```
+
+### Step 3: Deploy with Docker Compose
 
 ```bash
-# Pull latest images
-docker-compose -f docker-compose.prod.yml pull
-
 # Start all services
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose up -d
 
 # Check logs
-docker-compose -f docker-compose.prod.yml logs -f
+docker-compose logs -f
 ```
 
-### Step 3: Access Application
+### Step 4: Access Application
 
 - **Application**: http://localhost
 - **API**: http://localhost/api
@@ -78,7 +84,7 @@ docker-compose -f docker-compose.dev.yml down
 
 ```bash
 # Connect to PostgreSQL
-docker-compose -f docker-compose.dev.yml exec db psql -U postgres -d digitoy
+docker-compose -f docker-compose.dev.yml exec db psql -U postgres -d puff
 
 # Run SQL commands
 \dt                    -- List tables
@@ -92,11 +98,22 @@ SELECT * FROM puffs;   -- Query puffs
 - **Frontend UI**: `enesbaytekin/puff-ui:latest`
 - **Backend Server**: `enesbaytekin/puff-server:latest`
 
+### Versioned Images (Releases)
+
+Release'lar versioned tag'ler ile oluşturulur:
+- `enesbaytekin/puff-ui:v1.0.4`
+- `enesbaytekin/puff-server:v1.0.4`
+
 ### Pull Images Manually
 
 ```bash
+# Latest version
 docker pull enesbaytekin/puff-ui:latest
 docker pull enesbaytekin/puff-server:latest
+
+# Specific version
+docker pull enesbaytekin/puff-ui:v1.0.4
+docker pull enesbaytekin/puff-server:v1.0.4
 ```
 
 ## Container Architecture
@@ -105,7 +122,7 @@ docker pull enesbaytekin/puff-server:latest
 ┌─────────────────────────────────────────────────────────┐
 │                       Nginx (UI)                        │
 │                    Port 80 (Public)                     │
-│         enesbaytekin/puff-ui:latest                     │
+│              enesbaytekin/puff-ui:{VERSION}             │
 └────────────────────┬────────────────────────────────────┘
                      │
                      ├──► /api/* ──────────────────┐
@@ -114,7 +131,7 @@ docker pull enesbaytekin/puff-server:latest
                      │                   ┌─────────────────────┐
                      │                   │   Express Server    │
                      │                   │     Port 3000       │
-                     │                   │  puff-server:latest │
+                     │                   │  puff-server:{VERS} │
                      │                   └──────────┬──────────┘
                      │                              │
                      │                              ▼
@@ -122,6 +139,8 @@ docker pull enesbaytekin/puff-server:latest
                      │                   │    PostgreSQL       │
                      │                   │     Port 5432       │
                      │                   │    postgres:16      │
+                     │                   │     Database:       │
+                     │                   │       "puff"        │
                      │                   └─────────────────────┘
                      │
                      └──► /* (Static files)
@@ -131,11 +150,13 @@ docker pull enesbaytekin/puff-server:latest
 
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
-| `POSTGRES_DB` | Database name | `digitoy` | No |
+| `POSTGRES_DB` | Database name | `puff` | No |
 | `POSTGRES_USER` | Database user | `postgres` | No |
 | `POSTGRES_PASSWORD` | Database password | - | **Yes** |
 | `JWT_SECRET` | JWT signing secret | - | **Yes** |
 | `PORT` | Server port | `3000` | No |
+
+**Note:** Database name changed from `digitoy` to `puff` in v1.0.4
 
 ## Production Tips
 
@@ -156,7 +177,7 @@ openssl rand -hex 32
 Use Traefik or Nginx reverse proxy for HTTPS:
 
 ```yaml
-# Add to docker-compose.prod.yml
+# Add to docker-compose.yml
 reverse-proxy:
   image: traefik:v2.10
   ports:
@@ -171,38 +192,47 @@ reverse-proxy:
 
 ```bash
 # Backup
-docker-compose -f docker-compose.prod.yml exec db \
-  pg_dump -U postgres digitoy > backup.sql
+docker-compose exec db \
+  pg_dump -U postgres puff > backup.sql
 
 # Restore
-docker-compose -f docker-compose.prod.yml exec -T db \
-  psql -U postgres digitoy < backup.sql
+docker-compose exec -T db \
+  psql -U postgres puff < backup.sql
 ```
 
 ### 4. Monitor Logs
 
 ```bash
 # Real-time logs
-docker-compose -f docker-compose.prod.yml logs -f
+docker-compose logs -f
 
 # Last 100 lines
-docker-compose -f docker-compose.prod.yml logs --tail=100
+docker-compose logs --tail=100
 
 # Specific service
-docker-compose -f docker-compose.prod.yml logs -f server
+docker-compose logs -f server
 ```
 
 ### 5. Update to Latest Version
 
 ```bash
 # Pull new images
-docker-compose -f docker-compose.prod.yml pull
+docker-compose pull
 
 # Restart with new images
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose up -d
 
 # Remove old images
 docker image prune -a
+```
+
+### 6. Check Puff State
+
+Database'de puff state'lerini görüntüle:
+
+```bash
+docker-compose exec db psql -U postgres -d puff -c \
+  "SELECT name, hunger, mood, energy, updated_at FROM puffs;"
 ```
 
 ## Troubleshooting
@@ -211,45 +241,92 @@ docker image prune -a
 
 ```bash
 # Check logs
-docker-compose -f docker-compose.prod.yml logs
+docker-compose logs
 
 # Check container status
-docker-compose -f docker-compose.prod.yml ps
+docker-compose ps
 ```
 
 ### Database Connection Issues
 
 ```bash
 # Check if database is healthy
-docker-compose -f docker-compose.prod.yml exec db pg_isready
+docker-compose exec db pg_isready
 
 # Restart database
-docker-compose -f docker-compose.prod.yml restart db
+docker-compose restart db
 ```
 
 ### Reset Everything
 
 ```bash
 # Stop and remove containers, volumes
-docker-compose -f docker-compose.prod.yml down -v
+docker-compose down -v
 
 # Start fresh
-docker-compose -f docker-compose.prod.yml up -d
+docker-compose up -d
+```
+
+### State Decay Not Working
+
+```bash
+# Check server logs for decay calculation
+docker-compose logs server | grep decay
+
+# Check last update time
+docker-compose exec db psql -U postgres -d puff -c \
+  "SELECT name, hunger, mood, energy, updated_at FROM puffs;"
+```
+
+### LocalStorage Issues
+
+Browser console'da kontrol et:
+
+```javascript
+// Check localStorage
+console.log(localStorage.getItem('puffState_YOUR_USER_ID'));
+
+// Clear localStorage (reset)
+localStorage.clear();
 ```
 
 ## CI/CD Pipeline
 
 Images are automatically built and pushed to Docker Hub when:
 
-1. **Push to main**: Builds `latest` and `main` tags
-2. **Tagged release (v*)**: Builds versioned tags and creates GitHub Release
-3. **Pull requests**: Builds but doesn't push (for testing)
+### Release Workflow (.github/workflows/docker-build.yml)
 
-### GitHub Actions Workflow
+**Triggers:**
+- Version tags pushed (e.g., `v1.0.4`)
 
-- File: `.github/workflows/docker-build.yml`
-- Triggers: Push to main, tags, pull requests
-- Actions: Build, test, push to Docker Hub, create releases
+**Actions:**
+1. Extract version from tag
+2. Build and push UI image (`enesbaytekin/puff-ui:v1.0.4`)
+3. Build and push Server image (`enesbaytekin/puff-server:v1.0.4`)
+4. Generate `release/docker-compose.yml` with version tags
+5. Create GitHub Release with:
+   - `docker-compose.yml` (versioned)
+   - Sample .env content in release notes
+
+### Manual Release Process
+
+```bash
+# 1. Commit all changes
+git add .
+git commit -m "prep: release v1.0.4"
+
+# 2. Create version tag
+git tag v1.0.4
+
+# 3. Push tag to GitHub
+git push origin main --tags
+```
+
+GitHub Actions otomatik olarak:
+- Docker imajlarını build eder
+- Docker Hub'a push eder
+- Release oluşturur
+- docker-compose.yml dosyasını release'a ekler
 
 ### Manual Image Build
 
@@ -265,8 +342,40 @@ docker push enesbaytekin/puff-ui:latest
 docker push enesbaytekin/puff-server:latest
 ```
 
+## Project Features
+
+### State Management
+- **3 States**: Fullness (Hunger), Mood, Energy
+- **Decay System**: Zamanla azalır (offline calculation)
+- **Offline Support**: LocalStorage sync
+- **Immediate Sync**: State değişiklikleri anında server'a
+
+### Food System
+- **12 Foods**: Apple, Cake, Fish, Cookie, Ice Cream, Donut, Pizza, Sandwich, Burger, Carrot, Banana, Chicken
+- **Food Effects**: Sugar crash, protein boost, etc.
+- **Drag & Drop**: Mouse ve touch ile besleme
+
+### Decay Rates
+- Fullness: ~10 saatte 100→1
+- Mood: ~8 saatte 100→1
+- Energy: ~6.5 saatte 100→1
+
 ## Support
 
 For issues or questions:
 - GitHub Issues: https://github.com/enesbaytekin/puff/issues
 - Docker Hub: https://hub.docker.com/r/enesbaytekin/puff-ui
+
+## Version History
+
+### v1.0.4 (2026-02-05)
+- ✅ State management system
+- ✅ Food system (12 foods)
+- ✅ Decay system (offline + online)
+- ✅ UI improvements (progress bars, panels)
+- ✅ Release system (version tags)
+- ✅ Database rename (digitoy → puff)
+
+### Previous Versions
+- v0.2.x: Physics improvements, state effects
+- v0.1.x: Basic auth, database, puff creation

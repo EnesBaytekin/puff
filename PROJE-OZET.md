@@ -7,9 +7,11 @@ Puff, soft-body (yumuşak cisim) fizik tabanlı bir sanal evcil hayvan uygulamas
 **Temel Özellikler:**
 - Cute, yumuşak vücutlu bir creature (puff)
 - Touch/drag ile etkileşim (realistic physics)
-- Pet state sistemi: Hunger (Fullness), Mood, Energy
+- State sistemi: Fullness (Hunger), Mood, Energy - zamanla azalır
+- Yemek sistemi: 12 farklı yiyecek, sürükle-bırak ile besleme
 - User login ve custom puff oluşturma
 - PostgreSQL database ile persistence
+- Offline support ile client-side state sync
 
 ---
 
@@ -20,27 +22,35 @@ Puff, soft-body (yumuşak cisim) fizik tabanlı bir sanal evcil hayvan uygulamas
 - **Database:** PostgreSQL 16
 - **Deployment:** Docker, Docker Compose, Nginx reverse proxy
 - **Physics:** Custom particle-constraint sistemi (Verlet integration)
+- **State Management:** LocalStorage + server sync, offline decay
 
 ---
 
 ## Yapılan İşler (Completed)
 
-### 1. Database Schema (Backend)
+### 1. Database Schema (Backend) ✅
 **Dosya:** `server/db.js`
 
-Puff state'leri eklendi:
+Puff state'leri database'e eklendi:
 ```sql
-hunger INTEGER DEFAULT 50 CHECK (hunger >= 0 AND hunger <= 100),
-mood INTEGER DEFAULT 50 CHECK (mood >= 0 AND mood <= 100),
-energy INTEGER DEFAULT 50 CHECK (energy >= 0 AND energy <= 100)
+hunger INTEGER DEFAULT 50 CHECK (hunger >= 1 AND hunger <= 100),
+mood INTEGER DEFAULT 50 CHECK (mood >= 1 AND mood <= 100),
+energy INTEGER DEFAULT 50 CHECK (energy >= 1 AND energy <= 100)
 ```
 
-### 2. API Endpoint
+### 2. API Endpoints ✅
 **Dosya:** `server/routes/puffs.js`
 
-PUT `/api/puffs/state` endpoint - puff state güncelleme
+- `POST /api/puffs/create` - Puff oluşturma
+- `GET /api/puffs/mine` - Kullanıcının puff'ını getir (offline decay ile)
+- `PUT /api/puffs/state` - Puff state güncelleme
 
-### 3. Physics & Visual Effects
+**Özellik:** Offline decay calculation - kullanıcı online olmadığında bile state'ler zamanla azalır:
+- Fullness: ~10 saatte 100→1
+- Mood: ~8 saatte 100→1
+- Energy: ~6.5 saatte 100→1
+
+### 3. Physics & Visual Effects ✅
 **Dosya:** `js/physics/softbody.js`
 
 - **Energy → Movement Speed:** Düşük enerji = yavaş hareket, yüksek enerji = hızlı
@@ -54,16 +64,18 @@ PUT `/api/puffs/state` endpoint - puff state güncelleme
   - Smooth transition, keskin köşe yok
 
 - **Mood → Mouth Expression:**
-  - Mood 0: Sad (downward U / frown)
+  - Mood 1: Sad (downward U / frown)
   - Mood 50: Neutral (flat line)
   - Mood 100: Happy (upward U / smile)
   - Narrow mouth, cute look (radius * 0.1 width)
 
 - **Hunger (Fullness) → Color:**
-  - 0 = starving (çok karanlık)
+  - 1 = starving (çok karanlık)
   - 10-25 = hızla açılıyor (logaritmik)
   - 50+ = normal color
   - Logarithmic scale koyu=80 → light=0
+
+- **Eating Animation:** Yemek yenirken çiğeme animasyonu
 
 **Dosya:** `js/physics/solver.js`
 
@@ -71,25 +83,114 @@ PUT `/api/puffs/state` endpoint - puff state güncelleme
 - Idle movement delay: 20s (low energy) → 5s (high energy)
 - Dynamic idle distance based on energy²
 
-### 4. Input Handling (Touch/Mouse)
+### 4. Input Handling (Touch/Mouse) ✅
 **Dosya:** `js/input.js`
 
-- `isTouchOnCanvas()` check - slider vs canvas separation
-- Canvas'a dokunursa drag başlat, slider'a dokunursa scroll
 - Continuous drag force - energy affects how fast puff follows finger
 - Mouse ve touch event handling
+- Canvas interaction separation
 
-### 5. Test Sliders (Geçici)
-**Dosyalar:** `index.html`, `js/views/app.js`, `css/style.css`
+### 5. State Management System ✅
+**Dosya:** `js/stateManager.js`
 
-- 3 slider: Fullness, Mood, Energy
-- Validation ve clamping (0-100 range)
-- Debounced API update (500ms)
-- Mobile UX: 24px thumbs, touch-action: pan-y
-- Z-index: 1000 (always on top)
-- Min value = 1 (0'da glitch olmasın diye)
+**Özellikler:**
+- **User-specific LocalStorage:** Her kullanıcı için ayrı storage key (`puffState_{userId}`)
+- **Offline Support:** Online/offline detection, pending changes tracking
+- **Client-side Decay Loop:** Her 30 saniyede state decay uygulanır
+- **Fullness → Energy Conversion:** Fullness > 50 ve Energy < 80 iken otomatik dönüşüm
+- **Immediate Server Sync:** State değişiklikleri anında server'a gönderilir
+- **Integer Clamping:** Tüm değerler Math.round() ile integer'a çevrilir
 
-**NOT:** Bu sliderlar sadece testing için. Production'da kaldırılacak!
+**Decay Rates (per minute):**
+```javascript
+FULLNESS_DECAY_PER_MIN = 99 / 600  // ~0.165 (10 hours to minimum)
+MOOD_DECAY_PER_MIN = 99 / 480      // ~0.206 (8 hours to minimum)
+ENERGY_DECAY_PER_MIN = 99 / 390     // ~0.254 (6.5 hours to minimum)
+```
+
+**State Conversion:**
+```javascript
+// Fullness → Energy (when fullness > 50 and energy < 80)
+conversionAmount = 2; // 2 fullness → 1 energy per minute
+```
+
+### 6. Food System ✅
+**Dosya:** `js/food.js`
+
+**Özellikler:**
+- **12 Farklı Yiyecek:**
+  - Normal foods: Apple, Fish, Pizza, Sandwich, Burger, Carrot, Banana, Chicken
+  - Sweet foods: Cake, Cookie, Ice Cream, Donut (crash effect!)
+
+- **Drag & Drop:** Mouse ve touch ile yemek sürükle-bırak
+- **Eating Animation:** Yemek yenirken particle effects
+- **Food Effects:** Yiyeceklerin özel etkileri
+
+**Food List:**
+| Food | Emoji | Fullness | Mood | Energy | Effect |
+|------|-------|----------|------|--------|--------|
+| Apple | 🍎 | +15 | +5 | 0 | None |
+| Cake | 🍰 | +25 | +15 | +5 | Sugar Crash (2x mood decay, 5min) |
+| Fish | 🐟 | +20 | 0 | +10 | Protein Boost (0.5x energy decay, 10min) |
+| Cookie | 🍪 | +10 | +20 | 0 | Mini Crash (1.5x mood decay, 3min) |
+| Ice Cream | 🍦 | +15 | +25 | 0 | Brain Freeze (2.5x mood decay, 4min) |
+| Donut | 🍩 | +20 | +15 | 0 | Sugar Rush (1.8x mood decay, 4.5min) |
+| Pizza | 🍕 | +30 | +10 | +5 | None |
+| Sandwich | 🥪 | +25 | +5 | +15 | None |
+| Burger | 🍔 | +30 | +10 | +10 | None |
+| Carrot | 🥕 | +10 | 0 | +5 | Healthy Snack (0.7x energy decay, 10min) |
+| Banana | 🍌 | +15 | +5 | +10 | None |
+| Chicken | 🍗 | +25 | +5 | +15 | None |
+
+**Food Effects System:**
+```javascript
+// Example: Sugar Crash
+{
+    type: 'mood_decay',
+    multiplier: 2.0,      // 2x mood decay
+    duration: 300000,     // 5 minutes
+    name: 'Sugar Crash'
+}
+```
+
+### 7. UI System ✅
+**Dosyalar:** `index.html`, `css/style.css`, `js/views/app.js`
+
+**Özellikler:**
+- **Progress Bars:** Read-only progress bars (Fullness, Mood, Energy)
+- **Collapsible Panels:** Status panel ve Food panel
+- **Panel Toggle:** Tek panel açık, diğerini otomatik kapatır
+- **Food Panel:** Grid layout, 4 columns, drag & drop food items
+- **Z-index Fix:** Panel z-index 101, butonların üstünde görünüyor
+
+**Progress Bar System:**
+```html
+<div class="status-item">
+    <label>Fullness</label>
+    <div class="progress-bar">
+        <div class="progress-fill" id="hunger-bar"></div>
+    </div>
+</div>
+```
+
+### 8. Release System ✅
+**Dosyalar:** `.github/workflows/docker-build.yml`, `docker-compose.release.yml`
+
+**Özellikler:**
+- **Version Tags:** Release'da `docker-compose.yml` dosyası versiyon tag'li imajlar içerir
+- **Sample .env in Release:** Release notes'ta örnek .env içeriği
+- **Single File Release:** Release'da tek `docker-compose.yml` dosyası, direkt kullanıma hazır
+
+**Release Process:**
+```bash
+git tag v1.0.4
+git push origin v1.0.4
+```
+
+GitHub Actions:
+1. Docker imajlarını build eder ve push eder (`v1.0.4`, `latest`)
+2. `release/docker-compose.yml` oluşturur (versioned tags ile)
+3. GitHub release oluşturur, sample .env içeriği ekler
 
 ---
 
@@ -102,100 +203,106 @@ js/
 ├── physics/
 │   ├── particle.js      # Particle class (x, y, oldx, oldy)
 │   ├── constraint.js    # Constraint class (distance constraint)
-│   ├── softbody.js      # MAIN: Creature rendering, state effects
+│   ├── softbody.js      # MAIN: Creature rendering, state effects, eating animation
 │   └── solver.js        # Physics solver, damping, idle movement
 ├── canvas.js            # Canvas management
 ├── input.js             # Touch/mouse handling
 ├── api.js               # API client
 ├── router.js            # View routing
+├── stateManager.js      # NEW: State sync, decay, offline support
+├── food.js              # NEW: Food system, drag & drop, effects
 └── views/
     ├── login.js         # Login view
     ├── register.js      # Registration view
     ├── customize.js     # Puff creation view
-    └── app.js           # Main app view + test sliders
+    └── app.js           # Main app view, progress bars, panel toggle
 ```
 
 ### Backend Files
 
 ```
 server/
-├── db.js                # PostgreSQL schema, connection pool
+├── db.js                # PostgreSQL schema, connection pool (DB: puff)
 ├── server.js            # Express server, middleware
 ├── middleware/
 │   └── auth.js          # JWT authentication
 └── routes/
     ├── auth.js          # Login, register endpoints
-    └── puffs.js         # Puff CRUD + state update
+    └── puffs.js         # Puff CRUD, state update, offline decay
 ```
 
 ---
 
-## Mevcut Sorunlar (Known Issues)
+## Mevcut Durum
 
-1. **Slider min value:** Son değişiklikte slider min=1 yapıldı ama tam test edilmedi
-2. **Slider genel:** Production'da kaldırılacak, o yüzden düzeltmeye gerek yok
-3. **Container health:** puff-ui-dev container unhealthy gösteriyor (nginx related muhtemelen)
+### Tamamlanan ✅
+1. **Core Physics:** Soft-body creature, realistic interactions
+2. **User System:** Login, register, JWT auth
+3. **Database:** PostgreSQL, persistence
+4. **State System:** Fullness, Mood, Energy ile complete state management
+5. **Decay System:** Offline/online decay calculation
+6. **Food System:** 12 yiyecek, drag & drop, effects
+7. **UI System:** Progress bars, collapsible panels
+8. **Deployment:** Docker, versioned releases
+9. **Offline Support:** LocalStorage sync, pending changes
 
----
-
-## Yapılacaklar (Future Tasks)
-
-### Short Term
-- [ ] Sliderları kaldır (production release öncesi)
-- [ ] Actual gameplay mechanics:
-  - [ ] Feeding mechanism (hunger artırmak için)
-  - [ ] Playing mechanism (mood artırmak için)
-  - [ ] Resting mechanism (energy artırmak için)
-- [ ] Passive state decay (zamanla azalma: hunger, mood, energy)
-
-### Long Term
-- [ ] Save puff state periodically (auto-save)
+### Kısa Vadede Yapılacaklar
+- [ ] Mini games (mood artırmak için)
+- [ ] Resting mechanism (energy artırmak için)
+- [ ] Animation improvements (more eating variations)
+- [ ] Sound effects & music (optional)
 - [ ] Multiple puffs per user
-- [ ] Puff evolution/growth
-- [ ] Mini games
-- [ ] Sound effects & music
-- [ ] Animations (eating, sleeping, playing)
+
+### Uzun Vadede Yapılacaklar
+- [ ] Puff evolution/growth system
+- [ ] Social features (visit other puffs)
+- [ ] achievements/milestones
+- [ ] mobile app (React Native or PWA)
 
 ---
 
 ## Son Yapılan Değişiklikler (Recent Changes)
 
-### Mood Direction Fix (En son)
-**Dosya:** `js/physics/softbody.js` (line 399-419)
+### Release System (En Son)
+**Dosyalar:** `.github/workflows/docker-build.yml`, `docker-compose.release.yml`
 
-Mood direction düzeltildi:
-- Mood 0 → Sad (downward U, frown)
-- Mood 50 → Neutral (flat)
-- Mood 100 → Happy (upward U, smile)
+- Release'da tek `docker-compose.yml` dosyası
+- Version tags ile (`puff-ui:v1.0.0`, `puff-server:v1.0.0`)
+- Sample .env içeriği release notes'ta
+- Database adı değişti: `digitoy` → `puff`
 
-```javascript
-if (mood < 50) {
-    // Sad - downward curve
-} else {
-    // Happy - upward curve
-}
-```
+### Database Name Change
+**Dosyalar:** `server/db.js`, `docker-compose.yml`
 
-### Slider UX Fix
-**Dosyalar:** `index.html`, `js/input.js`, `css/style.css`
+- Default database name: `digitoy` → `puff`
+- Environment variable: `POSTGRES_DB=puff`
 
-- Touch interference fixed (canvas vs slider)
-- Larger thumbs (24px)
-- `touch-action: pan-y` added
-- `isTouchOnCanvas()` check added
-- Z-index increased to 1000
+### Food System Implementation
+**Dosya:** `js/food.js` (yeni dosya)
 
-### 0-Value Glitch Fix
-**Dosya:** `js/views/app.js` (line 75-84)
+- 12 farklı yiyecek
+- Drag & drop sistemi
+- Food effects (sugar crash, protein boost)
+- Eating animation
 
-Value validation ve clamping:
-```javascript
-const newState = {
-    hunger: Math.max(0, Math.min(100, hungerVal)),
-    mood: Math.max(0, Math.min(100, moodVal)),
-    energy: Math.max(0, Math.min(100, energyVal))
-};
-```
+### State Manager Implementation
+**Dosya:** `js/stateManager.js` (yeni dosya)
+
+- User-specific localStorage
+- Offline/online detection
+- 30-second decay loop
+- Fullness → Energy conversion
+- Immediate server sync
+- Food effects tracking
+
+### UI Improvements
+**Dosyalar:** `index.html`, `css/style.css`, `js/views/app.js`
+
+- Progress bars (read-only)
+- Collapsible panels
+- Status panel toggle
+- Food panel toggle
+- Z-index fixes
 
 ---
 
@@ -203,17 +310,24 @@ const newState = {
 
 ### Development
 ```bash
-docker compose up -d --build
+docker compose -f docker-compose.dev.yml up -d --build
+```
+
+### Production (Release)
+```bash
+# Download docker-compose.yml from GitHub Release
+# Create .env file
+docker-compose up -d
 ```
 
 ### Containers
-- `puff-db-dev`: PostgreSQL (port 5432)
-- `puff-server-dev`: Express API (port 3000)
-- `puff-ui-dev`: Nginx static files (port 8080)
+- `puff-db`: PostgreSQL (port 5432)
+- `puff-server`: Express API (port 3000)
+- `puff-ui`: Nginx static files (port 80)
 
 ### Access
-- App: http://localhost:8080
-- API: http://localhost:3000/api
+- App: http://localhost
+- API: http://localhost/api
 - DB: localhost:5432
 
 ---
@@ -221,39 +335,53 @@ docker compose up -d --build
 ## Kod Konvansiyonları
 
 - **State naming:** Database'de "hunger" ama UI'da "Fullness" (kullanıcı için daha anlaşılır)
-- **Mood:** 0 = çok mutsuz, 100 = çok mutlu
-- **Energy:** 0 = exhausted, 100 = full energy
-- **Hunger:** 0 = starving (aç), 100 = full (tok)
+- **Mood:** 1 = çok mutsuz, 100 = çok mutlu
+- **Energy:** 1 = exhausted, 100 = full energy
+- **Hunger:** 1 = starving (aç), 100 = full (tok)
+- **Database Name:** `puff` (eskiden `digitoy`)
+- **Integer Values:** Tüm state değerleri integer (1-100), decimal yok
 
 ---
 
 ## Test Notes
 
-Mood test etmek için:
-1. Slider en sola (1) → Sad face, şişkin şekil
-2. Slider orta (50) → Neutral face, normal şekil
-3. Slider en sağa (100) → Happy face, normal şekil
+### Decay Test
+1. Puff state'lerini 100 yap
+2. 30 saniye bekle
+3. State'ler azalmalı (client-side decay)
+4. Sayfayı yenile
+5. Offline decay uygulanmış olmalı
 
-Energy test etmek için:
-1. Slider en sola (1) → Çok yavaş hareket, yavaş döönme
-2. Slider en sağa (100) → Hızlı hareket, normal döönme
+### Food Effect Test
+1. Cake yedir (sugar crash)
+2. Mood hızla azalmalı (2x decay, 5 dakika)
+3. Fish yedir (protein boost)
+4. Energy yavaş azalmalı (0.5x decay, 10 dakika)
 
-Fullness test etmek için:
-1. Slider en sola (1) → Çok karanlık renk
-2. Slider 50 → Normal renk
-3. Slider en sağa (100) → Normal renk (no change)
+### Fullness → Energy Conversion Test
+1. Fullness > 50, Energy < 80 yap
+2. Birkaç decay cycle bekle (30sn * 2-3)
+3. Fullness azalmalı, Energy artmalı
+
+### Offline Test
+1. Uygulamayı aç
+2. Internet'i kes
+3. Yemek yedir (state değişikliği)
+4. LocalStorage'a kaydolmalı, pending changes eklenmeli
+5. Internet'i aç
+6. Pending changes server'a sync olmalı
 
 ---
 
 ## Docker Compose Notları
 
-- `version` attribute obsolete, uyarı veriyor ama çalışıyor
-- Container restart için: `docker compose restart ui` (not puff-ui)
-- Full rebuild: `docker compose up -d --build`
-- Logs: `docker compose logs -f [service]`
+- **Database Name:** `puff` (environment variable ile override edilebilir)
+- **Version Tags:** Release'da `v1.0.0` gibi specific tags
+- **Latest Tags:** Development'ta `latest` tag kullanılır
+- **Container Names:** `puff-db`, `puff-server`, `puff-ui`
 
 ---
 
 ## Son Güncelleme Tarihi
 
-2026-01-31 - Mood direction fix, slider UX improvements, min value = 1
+2026-02-05 - v1.0.4 release, database rename (digitoy → puff), food system, state manager, decay system
