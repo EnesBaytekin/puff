@@ -15,17 +15,56 @@ const Router = {
 
         // Handle browser back/forward
         window.addEventListener('popstate', (e) => {
-            const route = e.state?.route || this.getRouteFromHash();
-            this.navigate(route, false);
+            this.handleNavigationEvent(() => {
+                const route = e.state?.route || this.getRouteFromHash();
+                this.navigate(route, false);
+            });
         });
 
         // Handle hash changes
         window.addEventListener('hashchange', () => {
-            const route = this.getRouteFromHash();
-            if (route !== this.currentRoute) {
-                this.navigate(route, false);
-            }
+            this.handleNavigationEvent(() => {
+                const route = this.getRouteFromHash();
+                if (route !== this.currentRoute) {
+                    this.navigate(route, false);
+                }
+            });
         });
+    },
+
+    // Check auth and redirect if necessary
+    handleNavigationEvent(navigationCallback) {
+        const token = API.getToken();
+
+        // If trying to access protected routes without auth, redirect to login
+        const protectedRoutes = ['app', 'customize'];
+        const currentHash = this.getRouteFromHash();
+
+        if (!token && protectedRoutes.includes(currentHash)) {
+            // Not logged in, redirect to login
+            this.navigate('login');
+            return;
+        }
+
+        // If logged in and trying to access auth routes, redirect to app
+        const authRoutes = ['login', 'register'];
+        if (token && authRoutes.includes(currentHash)) {
+            // Already logged in with puff? Go to app
+            // Otherwise go to customize
+            API.getMyPuff()
+                .then(() => this.navigate('app'))
+                .catch((err) => {
+                    if (err.message === 'Puff not found') {
+                        this.navigate('customize');
+                    } else {
+                        this.navigate('login');
+                    }
+                });
+            return;
+        }
+
+        // Proceed with navigation
+        navigationCallback();
     },
 
     getRouteFromHash() {
@@ -53,6 +92,7 @@ const Router = {
             // Fallback to login
             if (route !== 'login') {
                 this.navigate('login');
+                return;
             }
         }
 
@@ -75,10 +115,16 @@ const Router = {
                 RegisterView.init();
                 break;
             case 'customize':
+                // Only allow access if logged in
+                if (!API.getToken()) {
+                    this.navigate('login');
+                    return;
+                }
                 CustomizeView.init();
                 break;
             case 'app':
                 // App view is initialized after fetching puff data
+                // Should only be accessible if logged in with puff
                 break;
         }
     },

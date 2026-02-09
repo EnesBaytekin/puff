@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="description" content="A calm, satisfying digital toy with soft-body physics">
-    <title>Digitoy</title>
+    <title>Puff Pet</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -19,11 +19,12 @@
         </div>
 
         <div class="auth-container">
-            <h1>Welcome to Digitoy</h1>
-            <p>Your calm, digital companion</p>
+            <div class="auth-mascot">🐱</div>
+            <h1>Welcome to Puff Pet</h1>
+            <p class="subtitle">Your calm, digital companion awaits</p>
             <form id="login-form">
-                <input type="email" id="login-email" placeholder="Email" required>
-                <input type="password" id="login-password" placeholder="Password" required>
+                <input type="text" id="login-username" placeholder="Username" required autocomplete="username">
+                <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password">
                 <button type="submit">Login</button>
             </form>
             <p class="error-message" id="login-error"></p>
@@ -42,12 +43,13 @@
         </div>
 
         <div class="auth-container">
+            <div class="auth-mascot">✨</div>
             <h1>Create Account</h1>
-            <p>Join and create your own puff</p>
+            <p class="subtitle">Join and create your own puff companion</p>
             <form id="register-form">
-                <input type="email" id="register-email" placeholder="Email" required>
-                <input type="password" id="register-password" placeholder="Password (min 6 characters)" required>
-                <button type="submit">Register</button>
+                <input type="text" id="register-username" placeholder="Username (3-20 characters)" required autocomplete="username">
+                <input type="password" id="register-password" placeholder="Password (min 6 characters)" required autocomplete="new-password">
+                <button type="submit">Create Account</button>
             </form>
             <p class="error-message" id="register-error"></p>
             <p class="switch-view">Already have an account? <a href="#login">Login</a></p>
@@ -65,16 +67,15 @@
         </div>
 
         <div class="customize-container">
+            <div class="auth-mascot">🎨</div>
             <h1>Create Your Puff</h1>
-            <p>Give your puff a name and color</p>
+            <p class="subtitle">Give your puff a name and choose a soft pastel color</p>
             <form id="customize-form">
-                <input type="text" id="puff-name" placeholder="Puff name" maxlength="100" required>
-                <div class="color-picker">
-                    <label for="puff-color">Choose color:</label>
-                    <input type="color" id="puff-color" value="#ffd6cc">
-                </div>
-                <div class="preview" id="puff-preview">
-                    <!-- Preview will be rendered here -->
+                <input type="text" id="puff-name" placeholder="Puff name" maxlength="100" required autocomplete="off">
+                <div class="color-picker-container">
+                    <label for="puff-hue">Choose color tone:</label>
+                    <input type="range" id="puff-hue" min="0" max="360" value="10" class="hue-slider">
+                    <canvas id="puff-preview-canvas" width="200" height="200" class="puff-preview-canvas"></canvas>
                 </div>
                 <button type="submit">Create Puff</button>
             </form>

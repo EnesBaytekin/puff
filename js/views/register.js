@@ -11,13 +11,13 @@ const RegisterView = {
         form.onsubmit = async (e) => {
             e.preventDefault();
 
-            const email = document.getElementById('register-email').value;
+            const username = document.getElementById('register-username').value;
             const password = document.getElementById('register-password').value;
 
             errorEl.textContent = '';
 
             try {
-                await API.register(email, password);
+                await API.register(username, password);
                 // Navigate to customization
                 Router.navigate('customize');
             } catch (err) {

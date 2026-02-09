@@ -11,13 +11,13 @@ const LoginView = {
         form.onsubmit = async (e) => {
             e.preventDefault();
 
-            const email = document.getElementById('login-email').value;
+            const username = document.getElementById('login-username').value;
             const password = document.getElementById('login-password').value;
 
             errorEl.textContent = '';
 
             try {
-                await API.login(email, password);
+                await API.login(username, password);
                 // Router will fetch puff and navigate
                 Router.fetchPuffAndRoute();
             } catch (err) {

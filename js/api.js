@@ -63,10 +63,10 @@ const API = {
     },
 
     // Auth API
-    async register(email, password) {
+    async register(username, password) {
         const response = await this.request('/api/auth/register', {
             method: 'POST',
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ username, password })
         });
 
         if (!response.ok) {
@@ -80,10 +80,10 @@ const API = {
         return data;
     },
 
-    async login(email, password) {
+    async login(username, password) {
         const response = await this.request('/api/auth/login', {
             method: 'POST',
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ username, password })
         });
 
         if (!response.ok) {
@@ -102,14 +102,14 @@ const API = {
         this.removeUserId();
 
         // Clear all form fields
-        const loginEmail = document.getElementById('login-email');
+        const loginUsername = document.getElementById('login-username');
         const loginPassword = document.getElementById('login-password');
-        const registerEmail = document.getElementById('register-email');
+        const registerUsername = document.getElementById('register-username');
         const registerPassword = document.getElementById('register-password');
 
-        if (loginEmail) loginEmail.value = '';
+        if (loginUsername) loginUsername.value = '';
         if (loginPassword) loginPassword.value = '';
-        if (registerEmail) registerEmail.value = '';
+        if (registerUsername) registerUsername.value = '';
         if (registerPassword) registerPassword.value = '';
 
         Router.navigate('login');

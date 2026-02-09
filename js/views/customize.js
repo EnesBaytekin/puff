@@ -1,19 +1,34 @@
 // Customize view
 const CustomizeView = {
+    currentHue: 10,
+    previewCanvas: null,
+    previewCtx: null,
+    previewPuff: null,
+    animationFrame: null,
+
     init() {
         const form = document.getElementById('customize-form');
         const errorEl = document.getElementById('customize-error');
-        const colorInput = document.getElementById('puff-color');
-        const preview = document.getElementById('puff-preview');
+        const hueSlider = document.getElementById('puff-hue');
+        this.previewCanvas = document.getElementById('puff-preview-canvas');
+        this.previewCtx = this.previewCanvas.getContext('2d');
 
         // Clear previous error
         errorEl.textContent = '';
 
-        // Update preview when color changes
-        this.updatePreview(colorInput.value);
+        // Set initial hue
+        this.currentHue = parseInt(hueSlider.value);
 
-        colorInput.oninput = () => {
-            this.updatePreview(colorInput.value);
+        // Create preview puff
+        this.createPreviewPuff();
+
+        // Start animation loop
+        this.startPreviewAnimation();
+
+        // Update preview when hue changes
+        hueSlider.oninput = () => {
+            this.currentHue = parseInt(hueSlider.value);
+            this.updatePuffColor();
         };
 
         // Handle form submission
@@ -21,9 +36,12 @@ const CustomizeView = {
             e.preventDefault();
 
             const name = document.getElementById('puff-name').value;
-            const color = colorInput.value;
+            const color = this.hslToHex(this.currentHue, 85, 78);
 
             errorEl.textContent = '';
+
+            // Stop animation before navigating
+            this.stopPreviewAnimation();
 
             try {
                 await API.createPuff(name, color);
@@ -31,106 +49,78 @@ const CustomizeView = {
                 Router.fetchPuffAndRoute();
             } catch (err) {
                 errorEl.textContent = err.message;
+                // Restart animation if there's an error
+                this.startPreviewAnimation();
             }
         };
     },
 
-    updatePreview(color) {
-        const preview = document.getElementById('puff-preview');
+    createPreviewPuff() {
+        const centerX = this.previewCanvas.width / 2;
+        const centerY = this.previewCanvas.height / 2;
+        const radius = 50; // Smaller radius for preview
 
-        // Create a simple canvas preview
-        preview.innerHTML = '';
-        const canvas = document.createElement('canvas');
-        canvas.width = 200;
-        canvas.height = 200;
-        preview.appendChild(canvas);
+        // Get initial color (vibrant pastel: 85% saturation, 78% lightness)
+        const color = this.hslToHex(this.currentHue, 85, 78);
 
-        const ctx = canvas.getContext('2d');
+        // Create a softbody puff with neutral state
+        this.previewPuff = new SoftBody(centerX, centerY, radius, 12, color, {
+            hunger: 100,  // Full (normal color)
+            mood: 0,      // Happy
+            energy: 100   // Full energy
+        });
 
-        // Draw a simple puff preview
-        const centerX = 100;
-        const centerY = 100;
-        const radius = 60;
-
-        // Draw irregular shape with rounded corners (using curves)
-        const points = [];
-        const numPoints = 12;
-        for (let i = 0; i < numPoints; i++) {
-            const angle = (i / numPoints) * Math.PI * 2;
-            const deform = 0.9 + Math.sin(i * 3) * 0.1;
-            const r = radius * deform;
-            const x = centerX + Math.cos(angle) * r;
-            const y = centerY + Math.sin(angle) * r;
-            points.push({ x, y });
-        }
-
-        // Draw smooth curve through points
-        ctx.beginPath();
-        const firstPoint = points[0];
-        const lastPoint = points[numPoints - 1];
-        const midX = (firstPoint.x + lastPoint.x) / 2;
-        const midY = (firstPoint.y + lastPoint.y) / 2;
-
-        ctx.moveTo(midX, midY);
-
-        for (let i = 0; i < numPoints; i++) {
-            const point = points[i];
-            const nextPoint = points[(i + 1) % numPoints];
-            const nextMidX = (point.x + nextPoint.x) / 2;
-            const nextMidY = (point.y + nextPoint.y) / 2;
-
-            ctx.quadraticCurveTo(point.x, point.y, nextMidX, nextMidY);
-        }
-
-        ctx.closePath();
-
-        ctx.fillStyle = color;
-        ctx.fill();
-        ctx.strokeStyle = this.getDarkerColor(color);
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.stroke();
-
-        // Draw simple face with contrast color
-        const contrastColor = this.getContrastColor(color);
-        ctx.fillStyle = contrastColor;
-        // Eyes
-        ctx.beginPath();
-        ctx.arc(centerX - 15, centerY - 10, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(centerX + 15, centerY - 10, 5, 0, Math.PI * 2);
-        ctx.fill();
-        // Smile
-        ctx.strokeStyle = contrastColor;
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.arc(centerX, centerY + 5, 15, 0.2, Math.PI - 0.2);
-        ctx.stroke();
+        // Set initial color
+        this.updatePuffColor();
     },
 
-    getDarkerColor(hex) {
-        // Convert hex to darker shade for outline
-        const num = parseInt(hex.slice(1), 16);
-        const r = Math.max(0, (num >> 16) - 40);
-        const g = Math.max(0, ((num >> 8) & 0x00FF) - 40);
-        const b = Math.max(0, (num & 0x0000FF) - 40);
-        return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`;
+    updatePuffColor() {
+        if (!this.previewPuff) return;
+
+        const color = this.hslToHex(this.currentHue, 85, 78);
+        this.previewPuff.baseColor = color;
+        this.previewPuff.color = color;
     },
 
-    getContrastColor(hex) {
-        // Get contrast color (black or white) based on luminance
-        const num = parseInt(hex.slice(1), 16);
-        const r = (num >> 16) & 0xFF;
-        const g = (num >> 8) & 0xFF;
-        const b = num & 0xFF;
+    startPreviewAnimation() {
+        const animate = () => {
+            // Clear canvas
+            this.previewCtx.clearRect(0, 0, this.previewCanvas.width, this.previewCanvas.height);
 
-        // Calculate luminance
-        const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            // Update puff animation
+            if (this.previewPuff) {
+                this.previewPuff.applyOrganicDeformation();
+                this.previewPuff.draw(this.previewCtx);
+            }
 
-        // Return black for light colors, white for dark colors
-        return luminance > 0.5 ? '#1a1a1a' : '#ffffff';
+            // Continue animation
+            this.animationFrame = requestAnimationFrame(animate);
+        };
+
+        animate();
+    },
+
+    stopPreviewAnimation() {
+        if (this.animationFrame) {
+            cancelAnimationFrame(this.animationFrame);
+            this.animationFrame = null;
+        }
+    },
+
+    cleanup() {
+        this.stopPreviewAnimation();
+        this.previewPuff = null;
+    },
+
+    // Convert HSL to Hex color
+    hslToHex(h, s, l) {
+        l /= 100;
+        const a = s * Math.min(l, 1 - l) / 100;
+        const f = n => {
+            const k = (n + h / 30) % 12;
+            const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+            return Math.round(255 * color).toString(16).padStart(2, '0');
+        };
+        return `#${f(0)}${f(8)}${f(4)}`;
     }
 };

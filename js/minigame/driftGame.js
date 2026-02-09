@@ -32,6 +32,9 @@ class DriftGame extends Minigame {
      * Setup game resources
      */
     setup() {
+        // Teleport puff to center of canvas before starting minigame
+        this.teleportPuffToCenter();
+
         // Initialize drift solver
         this.driftSolver = new DriftSolver(this.softBody);
         this.driftSolver.updateEnergy(this.currentEnergy);
@@ -46,6 +49,51 @@ class DriftGame extends Minigame {
         this.lastDecayTime = Date.now();
 
         console.log('DriftGame started');
+    }
+
+    /**
+     * Teleport puff to the center of the canvas
+     * This ensures the puff starts at a consistent position for minigame
+     */
+    teleportPuffToCenter() {
+        const canvasWidth = this.canvas.getWidth();
+        const canvasHeight = this.canvas.getHeight();
+        const centerX = canvasWidth / 2;
+        const centerY = canvasHeight / 2;
+
+        // Reset velocity of all particles
+        this.softBody.getParticles().forEach(p => {
+            p.vx = 0;
+            p.vy = 0;
+        });
+
+        // Move center particle to center
+        this.softBody.centerParticle.x = centerX;
+        this.softBody.centerParticle.y = centerY;
+
+        // Move all edge particles to form circle around center
+        const numParticles = this.softBody.numParticles;
+        for (let i = 0; i < numParticles; i++) {
+            const angle = (i / numParticles) * Math.PI * 2;
+
+            // Add organic variation
+            const variation = Math.sin(angle * 3) * 0.15 +
+                             Math.cos(angle * 2) * 0.1 +
+                             Math.sin(angle * 5) * 0.05;
+
+            const r = this.softBody.radius * (1 + variation);
+            const x = centerX + Math.cos(angle) * r;
+            const y = centerY + Math.sin(angle) * r;
+
+            this.softBody.particles[i].x = x;
+            this.softBody.particles[i].y = y;
+        }
+
+        // Reset main circle position
+        this.softBody.mainCircle.x = centerX;
+        this.softBody.mainCircle.y = centerY;
+
+        console.log(`[DriftGame] Teleported puff to center (${centerX}, ${centerY})`);
     }
 
     /**
