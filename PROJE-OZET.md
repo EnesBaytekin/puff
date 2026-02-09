@@ -12,17 +12,20 @@ Puff, soft-body (yumuşak cisim) fizik tabanlı bir sanal evcil hayvan uygulamas
 - User login ve custom puff oluşturma
 - PostgreSQL database ile persistence
 - Offline support ile client-side state sync
+- **Dark mode desteği (Light/Dark/Auto)**
+- **Modern UI/UX (modal panels, responsive)**
 
 ---
 
 ## Teknik Stack
 
-- **Frontend:** Vanilla JS, Canvas API
+- **Frontend:** Vanilla JS, Canvas API, CSS Variables
 - **Backend:** Node.js, Express.js
 - **Database:** PostgreSQL 16
 - **Deployment:** Docker, Docker Compose, Nginx reverse proxy
 - **Physics:** Custom particle-constraint sistemi (Verlet integration)
 - **State Management:** LocalStorage + server sync, offline decay
+- **Theme System:** CSS custom properties, system preference detection
 
 ---
 
@@ -153,27 +156,75 @@ conversionAmount = 2; // 2 fullness → 1 energy per minute
 }
 ```
 
-### 7. UI System ✅
-**Dosyalar:** `index.html`, `css/style.css`, `js/views/app.js`
+### 7. UI System ✅ (YENİLENMİŞ)
+**Dosyalar:** `index.html`, `css/style.css`, `js/views/app.js`, `js/globalSettings.js`
 
 **Özellikler:**
+- **Modal Panel System:** Overlay backdrop ile modern panel tasarımı
+- **Control Buttons:** Touch-optimized, responsive butonlar
 - **Progress Bars:** Read-only progress bars (Fullness, Mood, Energy)
-- **Collapsible Panels:** Status panel ve Food panel
-- **Panel Toggle:** Tek panel açık, diğerini otomatik kapatır
-- **Food Panel:** Grid layout, 4 columns, drag & drop food items
-- **Z-index Fix:** Panel z-index 101, butonların üstünde görünüyor
+- **Panel Management:** Tek panel açık, diğerini otomatik kapatır
+- **Z-index Hierarchy:** Controls (100) < Overlay (998) < Panels (999)
+- **Mobile Responsive:** Mobilde buton textleri gizlenir
+
+**Button Layout:**
+- **Top-Right:** ⚙️ Settings, 🚪 Logout (sistem ayarları)
+- **Bottom-Left:** 📊 Status, 🍽️ Food (oyunla ilgili butonlar)
 
 **Progress Bar System:**
 ```html
 <div class="status-item">
-    <label>Fullness</label>
+    <div class="status-label">
+        <span>🍖️</span>
+        <span>Fullness</span>
+    </div>
     <div class="progress-bar">
-        <div class="progress-fill" id="hunger-bar"></div>
+        <div class="progress-fill hunger-fill" id="hunger-bar"></div>
     </div>
 </div>
 ```
 
-### 8. Release System ✅
+### 8. Theme System ✅ (YENİ)
+**Dosyalar:** `js/themeManager.js`, `js/globalSettings.js`, `css/style.css`
+
+**Özellikler:**
+- **Dark Mode:** Full dark mode desteği
+- **Light Mode:** Default light theme
+- **Auto Mode:** Sistem tercihini otomatik algılar
+- **CSS Variables:** Tüm renkler CSS custom properties ile yönetilir
+- **Global Settings:** Tüm sayfalarda (login, register, customize, app) erişilebilir
+
+**Theme Seçenekleri:**
+- ☀️ **Light:** Açık tema (bej/krem tonlar)
+- 🌙 **Dark:** Koyu tema (koyu mavi/mor tonlar)
+- 🔄 **Auto:** Sistem tercihini takip eder
+
+**CSS Variables:**
+```css
+:root {
+    --bg-color: #f5f0e6;
+    --text-color: #2d2d2d;
+    --panel-bg: rgba(255, 255, 255, 0.98);
+    /* ... more variables */
+}
+
+body.theme-dark {
+    --bg-color: #1a1a2e;
+    --text-color: #e0e0e0;
+    --panel-bg: rgba(30, 30, 50, 0.98);
+    /* ... more variables */
+}
+```
+
+### 9. Auth System Improvements ✅ (YENİ)
+**Dosyalar:** `js/api.js`, `index.html`
+
+**Özellikler:**
+- **Form Clearing:** Logout olduktan sonra tüm form alanları temizlenir
+- **Security:** Email/Password field'ları otomatik temizlenir
+- **Auth Pages:** Login/Register/Customize sayfalarında da settings butonu
+
+### 10. Release System ✅
 **Dosyalar:** `.github/workflows/docker-build.yml`, `docker-compose.release.yml`
 
 **Özellikler:**
@@ -192,6 +243,15 @@ GitHub Actions:
 2. `release/docker-compose.yml` oluşturur (versioned tags ile)
 3. GitHub release oluşturur, sample .env içeriği ekler
 
+### 11. Infrastructure Fixes ✅
+**Dosyalar:** `nginx.conf`, `docker-compose.*.yml`
+
+**Özellikler:**
+- **Nginx Configuration:** Service name kullanımı (`server:3000` yerine container name)
+- **Docker Compose:** Sadece 2 dosya (dev ve release)
+- **Network Configuration:** Tüm servisler aynı network'te (`puff-network`)
+- **Database Name:** `digitoy` → `puff` (tüm configuration'larda)
+
 ---
 
 ## Dosya Yapısı ve Önemli Kodlar
@@ -207,10 +267,12 @@ js/
 │   └── solver.js        # Physics solver, damping, idle movement
 ├── canvas.js            # Canvas management
 ├── input.js             # Touch/mouse handling
-├── api.js               # API client
+├── api.js               # API client, form clearing on logout
 ├── router.js            # View routing
-├── stateManager.js      # NEW: State sync, decay, offline support
-├── food.js              # NEW: Food system, drag & drop, effects
+├── stateManager.js      # State sync, decay, offline support
+├── food.js              # Food system, drag & drop, effects
+├── themeManager.js      # NEW: Theme management (light/dark/auto)
+├── globalSettings.js    # NEW: Global settings panel (all pages)
 └── views/
     ├── login.js         # Login view
     ├── register.js      # Registration view
@@ -237,14 +299,16 @@ server/
 
 ### Tamamlanan ✅
 1. **Core Physics:** Soft-body creature, realistic interactions
-2. **User System:** Login, register, JWT auth
+2. **User System:** Login, register, JWT auth, form clearing
 3. **Database:** PostgreSQL, persistence
 4. **State System:** Fullness, Mood, Energy ile complete state management
 5. **Decay System:** Offline/online decay calculation
 6. **Food System:** 12 yiyecek, drag & drop, effects
-7. **UI System:** Progress bars, collapsible panels
-8. **Deployment:** Docker, versioned releases
-9. **Offline Support:** LocalStorage sync, pending changes
+7. **UI System:** Modal panels, progress bars, responsive
+8. **Theme System:** Dark/light/auto modes, CSS variables
+9. **Settings System:** Global settings panel, all pages
+10. **Deployment:** Docker, versioned releases, nginx config
+11. **Offline Support:** LocalStorage sync, pending changes
 
 ### Kısa Vadede Yapılacaklar
 - [ ] Mini games (mood artırmak için)
@@ -263,46 +327,47 @@ server/
 
 ## Son Yapılan Değişiklikler (Recent Changes)
 
-### Release System (En Son)
-**Dosyalar:** `.github/workflows/docker-build.yml`, `docker-compose.release.yml`
+### UI/UX Complete Redesign (En Son) ✅
+**Dosyalar:** `index.html`, `css/style.css`, `js/views/app.js`, `js/globalSettings.js`
 
-- Release'da tek `docker-compose.yml` dosyası
-- Version tags ile (`puff-ui:v1.0.0`, `puff-server:v1.0.0`)
-- Sample .env içeriği release notes'ta
-- Database adı değişti: `digitoy` → `puff`
+- Modal panel sistemi (overlay backdrop ile)
+- Control button layout (top-right: settings/logout, bottom-left: status/food)
+- Z-index hierarchy (controls: 100 < overlay: 998 < panels: 999)
+- Touch-optimized butonlar (user-select: none, touch-action: manipulation)
+- Responsive tasarım (mobile'da buton text'leri gizlenir)
+- Close button ve overlay click-to-close özellikleri
 
-### Database Name Change
-**Dosyalar:** `server/db.js`, `docker-compose.yml`
+### Dark Mode & Theme System ✅
+**Dosyalar:** `js/themeManager.js`, `js/globalSettings.js`, `css/style.css`
 
-- Default database name: `digitoy` → `puff`
-- Environment variable: `POSTGRES_DB=puff`
+- Light/Dark/Auto theme desteği
+- CSS custom properties ile renk yönetimi
+- Sistem tercihini otomatik algılama
+- Global settings panel (tüm sayfalarda erişilebilir)
+- Auth sayfalarında da theme değiştirme
 
-### Food System Implementation
-**Dosya:** `js/food.js` (yeni dosya)
+### Auth System Improvements ✅
+**Dosyalar:** `js/api.js`, `index.html`
 
-- 12 farklı yiyecek
-- Drag & drop sistemi
-- Food effects (sugar crash, protein boost)
-- Eating animation
+- Logout sonrası form alanlarını temizleme
+- Login/Register/Customize sayfalarında settings butonu
+- Auth page controls (sağ üstte)
 
-### State Manager Implementation
-**Dosya:** `js/stateManager.js` (yeni dosya)
+### Infrastructure Fixes ✅
+**Dosyalar:** `nginx.conf`, `docker-compose.*.yml`
 
-- User-specific localStorage
-- Offline/online detection
-- 30-second decay loop
-- Fullness → Energy conversion
-- Immediate server sync
-- Food effects tracking
+- Nginx upstream config (service name kullanımı)
+- Docker compose cleanup (sadece dev ve release)
+- Network configuration consistency
+- API function name fix (`API.getPuff()` → `API.getMyPuff()`)
 
-### UI Improvements
-**Dosyalar:** `index.html`, `css/style.css`, `js/views/app.js`
+### Database & Release System ✅
+**Dosyalar:** `server/db.js`, `.github/workflows/docker-build.yml`
 
-- Progress bars (read-only)
-- Collapsible panels
-- Status panel toggle
-- Food panel toggle
-- Z-index fixes
+- Database name change: `digitoy` → `puff`
+- Release system with version tags
+- Sample .env in release notes
+- Single file release
 
 ---
 
@@ -323,11 +388,11 @@ docker-compose up -d
 ### Containers
 - `puff-db`: PostgreSQL (port 5432)
 - `puff-server`: Express API (port 3000)
-- `puff-ui`: Nginx static files (port 80)
+- `puff-ui`: Nginx static files (port 8080)
 
 ### Access
-- App: http://localhost
-- API: http://localhost/api
+- App: http://localhost:8080
+- API: http://localhost:8080/api
 - DB: localhost:5432
 
 ---
@@ -340,10 +405,18 @@ docker-compose up -d
 - **Hunger:** 1 = starving (aç), 100 = full (tok)
 - **Database Name:** `puff` (eskiden `digitoy`)
 - **Integer Values:** Tüm state değerleri integer (1-100), decimal yok
+- **Theme Classes:** `theme-light`, `theme-dark` (body element)
+- **Panel States:** `.active` class (`.open` kullanılmıyor artık)
 
 ---
 
 ## Test Notes
+
+### Theme Test
+1. Settings paneli aç
+2. Light/Dark/Auto modları arasında geçiş yap
+3. Tüm sayfalarda (login/register/customize/app) test et
+4. System preference değişimini test et (Auto mode)
 
 ### Decay Test
 1. Puff state'lerini 100 yap
@@ -371,6 +444,13 @@ docker-compose up -d
 5. Internet'i aç
 6. Pending changes server'a sync olmalı
 
+### Form Clearing Test
+1. Login ol
+2. Logout yap
+3. Email/password field'ları temizlenmeli
+4. Browser back/forward yap
+5. Field'lar hala temiz olmalı
+
 ---
 
 ## Docker Compose Notları
@@ -379,9 +459,16 @@ docker-compose up -d
 - **Version Tags:** Release'da `v1.0.0` gibi specific tags
 - **Latest Tags:** Development'ta `latest` tag kullanılır
 - **Container Names:** `puff-db`, `puff-server`, `puff-ui`
+- **Network:** `puff-network` (tüm servisler aynı network'te)
+- **Compose Files:** Sadece 2 dosya (dev ve release)
 
 ---
 
 ## Son Güncelleme Tarihi
 
-2026-02-05 - v1.0.4 release, database rename (digitoy → puff), food system, state manager, decay system
+2026-02-05 - v1.0.5
+- Complete UI/UX redesign (modal panels)
+- Dark mode support (light/dark/auto)
+- Global settings panel (all pages)
+- Auth improvements (form clearing)
+- Infrastructure fixes (nginx, docker)

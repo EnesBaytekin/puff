@@ -10,8 +10,25 @@ class InputHandler {
         this.dragX = 0; // Current drag position
         this.dragY = 0;
 
+        // Minigame manager reference (set later)
+        this.minigameManager = null;
+
         this.setupMouseEvents();
         this.setupTouchEvents();
+    }
+
+    /**
+     * Set minigame manager for input forwarding
+     */
+    setMinigameManager(minigameManager) {
+        this.minigameManager = minigameManager;
+    }
+
+    /**
+     * Check if minigame is active
+     */
+    isMinigameActive() {
+        return this.minigameManager && this.minigameManager.isGameActive();
     }
 
     // Get position from mouse event
@@ -34,7 +51,13 @@ class InputHandler {
     }
 
     // Start dragging
-    startDrag(x, y) {
+    startDrag(x, y, identifier = 'mouse') {
+        // Forward to minigame if active
+        if (this.isMinigameActive()) {
+            this.minigameManager.handleInput('touchstart', { x, y, identifier });
+            return;
+        }
+
         this.physicsSolver.markInteraction(); // Mark that user interacted
         this.draggedParticle = this.softBody.findNearestParticle(x, y);
         if (this.draggedParticle) {
@@ -45,7 +68,13 @@ class InputHandler {
     }
 
     // Continue dragging (store position for continuous application)
-    drag(x, y) {
+    drag(x, y, identifier = 'mouse') {
+        // Forward to minigame if active
+        if (this.isMinigameActive()) {
+            this.minigameManager.handleInput('touchmove', { x, y, identifier });
+            return;
+        }
+
         if (this.isDragging) {
             this.physicsSolver.markInteraction(); // Keep marking while dragging
             this.dragX = x;
@@ -56,6 +85,11 @@ class InputHandler {
     // Apply continuous drag force (called every frame while holding)
     // Energy affects how quickly the puff follows the finger (dramatically)
     continuousDrag() {
+        // Don't apply normal drag during minigame
+        if (this.isMinigameActive()) {
+            return;
+        }
+
         if (this.isDragging && this.draggedParticle) {
             // Get energy from softBody state
             const energy = this.softBody.puffState.energy || 50;
@@ -70,7 +104,13 @@ class InputHandler {
     }
 
     // Stop dragging
-    endDrag() {
+    endDrag(identifier = 'mouse') {
+        // Forward to minigame if active
+        if (this.isMinigameActive()) {
+            this.minigameManager.handleInput('touchend', { identifier });
+            return;
+        }
+
         this.isDragging = false;
         this.draggedParticle = null;
     }
@@ -102,21 +142,25 @@ class InputHandler {
         this.canvas.canvas.addEventListener('touchstart', (event) => {
             event.preventDefault(); // Prevent scrolling
             const pos = this.getTouchPosition(event);
-            this.startDrag(pos.x, pos.y);
+            const touch = event.touches[0];
+            this.startDrag(pos.x, pos.y, touch.identifier);
         }, { passive: false });
 
         window.addEventListener('touchmove', (event) => {
             event.preventDefault(); // Prevent scrolling
             const pos = this.getTouchPosition(event);
-            this.drag(pos.x, pos.y);
+            const touch = event.touches[0];
+            this.drag(pos.x, pos.y, touch.identifier);
         }, { passive: false });
 
-        window.addEventListener('touchend', () => {
-            this.endDrag();
+        window.addEventListener('touchend', (event) => {
+            const touch = event.changedTouches[0];
+            this.endDrag(touch.identifier);
         });
 
-        window.addEventListener('touchcancel', () => {
-            this.endDrag();
+        window.addEventListener('touchcancel', (event) => {
+            const touch = event.changedTouches[0];
+            this.endDrag(touch.identifier);
         });
     }
 }

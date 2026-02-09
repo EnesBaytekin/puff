@@ -6,8 +6,10 @@ const AppView = {
     inputHandler: null,
     foodDragHandler: null,
     stateManager: null,
+    minigameManager: null,
     animationFrameId: null,
     isPanelOpen: false,
+    lastFrameTime: 0,
 
     init(puffData) {
         // Clean up previous instance if exists
@@ -39,6 +41,31 @@ const AppView = {
 
         // Initialize input handler
         this.inputHandler = new InputHandler(this.canvas, this.creature, this.physicsSolver);
+
+        // Initialize minigame manager
+        this.minigameManager = new MinigameManager(
+            this.canvas,
+            this.creature,
+            this.physicsSolver,
+            this.inputHandler
+        );
+
+        // Register minigames
+        this.minigameManager.registerMinigame('drift', DriftGame);
+
+        // Set minigame manager reference in input handler
+        this.inputHandler.setMinigameManager(this.minigameManager);
+
+        // Setup state change callback for minigame
+        this.minigameManager.onStateApplied((changes) => {
+            if (this.stateManager) {
+                // Update state manager with changes
+                this.stateManager.handleMinigameStateChanges(changes);
+            }
+        });
+
+        // Setup minigame UI
+        this.setupMinigameUI();
 
         // Initialize StateManager (handles decay, sync, etc.)
         // Skip localStorage on first load to get fresh data from server
@@ -142,6 +169,50 @@ const AppView = {
         }
     },
 
+    setupMinigameUI() {
+        const toggleBtn = document.getElementById('minigame-toggle-btn');
+        const exitBtn = document.getElementById('minigame-exit-btn');
+
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => {
+                this.startMinigame();
+            });
+        }
+
+        if (exitBtn) {
+            exitBtn.addEventListener('click', () => {
+                this.endMinigame();
+            });
+        }
+    },
+
+    startMinigame() {
+        // Close all panels first
+        this.closeStatusPanel();
+        this.closeFoodPanel();
+        this.closeSettingsPanel();
+
+        // Get current puff state
+        const currentState = {
+            energy: this.creature.puffState.energy,
+            mood: this.creature.puffState.mood,
+            hunger: this.creature.puffState.hunger
+        };
+
+        // Start drift minigame
+        this.minigameManager.startMinigame('drift', currentState);
+    },
+
+    endMinigame() {
+        if (this.minigameManager && this.minigameManager.isGameActive()) {
+            this.minigameManager.endMinigame();
+
+            // Update progress bars with final state
+            const finalState = this.creature.puffState;
+            this.updateProgressBars(finalState);
+        }
+    },
+
     updateProgressBars(state) {
         const hungerBar = document.getElementById('hunger-bar');
         const moodBar = document.getElementById('mood-bar');
@@ -158,27 +229,49 @@ const AppView = {
     },
 
     startLoop() {
-        const update = () => {
-            // Apply organic deformation (continuous morphing)
-            this.creature.applyOrganicDeformation();
+        this.lastFrameTime = performance.now();
 
-            // Apply continuous drag force (keeps creature under finger while holding)
-            this.inputHandler.continuousDrag();
+        const update = (currentTime) => {
+            // Calculate delta time in milliseconds
+            const deltaTime = currentTime - this.lastFrameTime;
+            this.lastFrameTime = currentTime;
 
-            // Update physics
-            this.physicsSolver.update(this.creature, this.canvas.getWidth(), this.canvas.getHeight());
+            // Check if minigame is active
+            if (this.minigameManager && this.minigameManager.isGameActive()) {
+                // Update minigame
+                this.minigameManager.update(deltaTime);
 
-            // Clear canvas
-            this.canvas.clear();
+                // Clear canvas
+                this.canvas.clear();
 
-            // Draw creature
-            this.creature.draw(this.canvas.getContext());
+                // Draw creature
+                this.creature.draw(this.canvas.getContext());
+
+                // Render minigame
+                this.minigameManager.render(this.canvas.getContext());
+            } else {
+                // Normal game loop
+                // Apply organic deformation (continuous morphing)
+                this.creature.applyOrganicDeformation();
+
+                // Apply continuous drag force (keeps creature under finger while holding)
+                this.inputHandler.continuousDrag();
+
+                // Update physics
+                this.physicsSolver.update(this.creature, this.canvas.getWidth(), this.canvas.getHeight());
+
+                // Clear canvas
+                this.canvas.clear();
+
+                // Draw creature
+                this.creature.draw(this.canvas.getContext());
+            }
 
             // Request next frame
             this.animationFrameId = requestAnimationFrame(update);
         };
 
-        update();
+        this.animationFrameId = requestAnimationFrame(update);
     },
 
     cleanup() {
@@ -186,6 +279,11 @@ const AppView = {
         if (this.animationFrameId) {
             cancelAnimationFrame(this.animationFrameId);
             this.animationFrameId = null;
+        }
+
+        // End minigame if active
+        if (this.minigameManager && this.minigameManager.isGameActive()) {
+            this.minigameManager.endMinigame();
         }
 
         // Stop StateManager decay loop
@@ -201,6 +299,8 @@ const AppView = {
         const foodPanel = document.getElementById('food-panel');
         const statusToggleBtn = document.getElementById('status-toggle-btn');
         const foodToggleBtn = document.getElementById('food-toggle-btn');
+        const minigameOverlay = document.getElementById('minigame-overlay');
+        const minigameExitBtn = document.getElementById('minigame-exit-btn');
 
         if (statusOverlay) statusOverlay.classList.remove('active');
         if (foodOverlay) foodOverlay.classList.remove('active');
@@ -208,6 +308,8 @@ const AppView = {
         if (foodPanel) foodPanel.classList.remove('active');
         if (statusToggleBtn) statusToggleBtn.classList.remove('active');
         if (foodToggleBtn) foodToggleBtn.classList.remove('active');
+        if (minigameOverlay) minigameOverlay.classList.remove('active');
+        if (minigameExitBtn) minigameExitBtn.classList.remove('active');
 
         this.isPanelOpen = false;
 

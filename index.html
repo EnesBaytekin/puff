@@ -110,6 +110,11 @@
                 <span class="btn-icon">🍽️</span>
                 <span class="btn-text">Food</span>
             </button>
+
+            <button id="minigame-toggle-btn" class="control-btn menu-btn">
+                <span class="btn-icon">🎮</span>
+                <span class="btn-text">Play</span>
+            </button>
         </div>
 
         <!-- Status Panel (Modal style) -->
@@ -166,6 +171,15 @@
 
         <!-- Dragged Food (hidden by default) -->
         <div class="dragged-food" id="dragged-food" style="display: none;"></div>
+
+        <!-- Minigame Overlay (for when minigame is active) -->
+        <div class="minigame-overlay" id="minigame-overlay"></div>
+
+        <!-- Minigame Exit Button -->
+        <button id="minigame-exit-btn" class="minigame-exit-btn">
+            <span class="btn-icon">✕</span>
+            <span class="btn-text">Exit</span>
+        </button>
     </div>
 
     <!-- Global Settings Panel (available on all pages) -->
@@ -210,6 +224,14 @@
     <script src="js/food.js"></script>
     <script src="js/themeManager.js"></script>
     <script src="js/globalSettings.js"></script>
+
+    <!-- Minigame Scripts -->
+    <script src="js/minigame/minigame.js"></script>
+    <script src="js/minigame/particleEffect.js"></script>
+    <script src="js/minigame/targetCircle.js"></script>
+    <script src="js/minigame/driftSolver.js"></script>
+    <script src="js/minigame/driftGame.js"></script>
+    <script src="js/minigame/minigameManager.js"></script>
 
     <script src="js/api.js"></script>
     <script src="js/router.js"></script>

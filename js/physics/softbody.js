@@ -231,6 +231,10 @@ class SoftBody {
 
     // Draw the creature on canvas
     draw(ctx) {
+        // Update mainCircle position to follow the center particle
+        this.mainCircle.x = this.centerParticle.x;
+        this.mainCircle.y = this.centerParticle.y;
+
         const numPoints = this.mainCircle.deformPoints.length;
 
         // Apply mood-based squishy deformation (low mood = wide and short)

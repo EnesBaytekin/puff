@@ -83,6 +83,8 @@ body {
     width: 100%;
     height: 100%;
     touch-action: none;
+    position: relative;
+    z-index: 998; /* Above minigame overlay, below buttons (100+) */
 }
 
 /* ==============================
@@ -288,7 +290,7 @@ body {
     position: fixed;
     top: 20px;
     right: 20px;
-    z-index: 100;
+    z-index: 999; /* Above canvas (998) */
     display: flex;
     gap: 10px;
 }
@@ -298,7 +300,7 @@ body {
     position: fixed;
     bottom: 20px;
     left: 20px;
-    z-index: 100;
+    z-index: 999; /* Above canvas (998) */
     display: flex;
     gap: 10px;
 }
@@ -671,4 +673,80 @@ body {
         grid-template-columns: repeat(3, 1fr);
         gap: 10px;
     }
+
+    .minigame-exit-btn {
+        padding: 10px 14px;
+        top: 10px;
+        left: 10px;
+    }
+
+    .minigame-exit-btn .btn-text {
+        display: none;
+    }
+}
+
+/* ==============================
+   Minigame UI
+   ============================== */
+
+.minigame-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 997;
+    opacity: 0;
+    pointer-events: none; /* Never blocks clicks */
+    transition: opacity 0.3s ease;
+}
+
+.minigame-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.minigame-exit-btn {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1001;
+    background: var(--panel-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    padding: 12px 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-20px);
+}
+
+.minigame-exit-btn.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(0);
+}
+
+.minigame-exit-btn:hover {
+    background: var(--hover-bg);
+    transform: translateX(-2px);
+}
+
+.minigame-exit-btn:active {
+    transform: translateX(0);
+}
+
+/* Theme-specific minigame exit button styles */
+.theme-dark .minigame-exit-btn {
+    background: var(--panel-bg);
+    border-color: rgba(255, 255, 255, 0.1);
 }

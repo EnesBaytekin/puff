@@ -367,6 +367,25 @@ class StateManager {
         return this.currentState;
     }
 
+    // Handle state changes from minigame (live updates)
+    handleMinigameStateChanges(changes) {
+        if (!changes || !this.currentState) return;
+
+        // Apply changes to current state
+        if (changes.energyDelta !== undefined) {
+            this.currentState.energy = Math.max(1, Math.min(100, this.currentState.energy + changes.energyDelta));
+        }
+        if (changes.moodDelta !== undefined) {
+            this.currentState.mood = Math.max(1, Math.min(100, this.currentState.mood + changes.moodDelta));
+        }
+        if (changes.hungerDelta !== undefined) {
+            this.currentState.hunger = Math.max(1, Math.min(100, this.currentState.hunger + changes.hungerDelta));
+        }
+
+        // Update UI
+        this.updateUI();
+    }
+
     // Cleanup
     cleanup() {
         this.stopDecayLoop();
