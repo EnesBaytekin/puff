@@ -26,12 +26,18 @@ class TargetCircle {
         // Check if ENTIRE hitbox is inside circle
         const isFullyInside = this.containsHitbox(hitbox);
 
+        // DEBUG: Log hitbox position (every 60 frames = ~1 sec)
+        if (Math.random() < 0.016) { // Approx every second
+            console.log('[TargetCircle] Hitbox:', hitbox, 'Circle:', {x: this.x, y: this.y, radius: this.radius}, 'isFullyInside:', isFullyInside, 'currentDuration:', this.currentDuration, 'required:', this.requiredDuration);
+        }
+
         if (isFullyInside && !this.isCompleted) {
             this.currentDuration += deltaTime;
 
             // Check if target is completed
             if (this.currentDuration >= this.requiredDuration) {
                 this.isCompleted = true;
+                console.log('[TargetCircle] TARGET COMPLETED! Returning true');
                 return true; // Just completed
             }
         } else {

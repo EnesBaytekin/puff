@@ -241,10 +241,11 @@ class StateManager {
         // 30 seconds = 0.5 minutes
         const minutesPassed = 0.5;
 
-        // Decay rates (same as server)
-        const FULLNESS_DECAY_PER_MIN = 99 / 600;  // ~0.165
-        const MOOD_DECAY_PER_MIN = 99 / 480;      // ~0.206
-        const ENERGY_DECAY_PER_MIN = 99 / 390;    // ~0.254
+        // Decay rates - 8-10 hours to go from 100 to 1
+        // 99 points in 8-10 hours = 0.165-0.206 per minute
+        const FULLNESS_DECAY_PER_MIN = 99 / 540;  // ~0.183 (9 hours)
+        const MOOD_DECAY_PER_MIN = 99 / 540;      // ~0.183 (9 hours)
+        const ENERGY_DECAY_PER_MIN = 99 / 540;    // ~0.183 (9 hours)
 
         // Get current decay multipliers from active effects
         const moodDecayMultiplier = this.getMoodDecayMultiplier();
@@ -255,12 +256,19 @@ class StateManager {
         let newMood = this.currentState.mood - (minutesPassed * MOOD_DECAY_PER_MIN * moodDecayMultiplier);
         let newEnergy = this.currentState.energy - (minutesPassed * ENERGY_DECAY_PER_MIN * energyDecayMultiplier);
 
-        // Apply Fullness → Energy conversion
-        // If fullness > 50 and energy < 80, convert fullness to energy
-        if (newHunger > 50 && newEnergy < 80) {
-            const conversionAmount = 2; // Convert 2 fullness to 1 energy
-            newHunger -= conversionAmount * minutesPassed;
-            newEnergy += (conversionAmount / 2) * minutesPassed;
+        // Apply conversions (hunger → energy → mood)
+
+        // Hunger → Energy conversion (ONLY conversion that happens automatically)
+        // If hunger is higher than energy, convert hunger to energy until equal
+        // Fast conversion: 5-10 minutes for 20 points
+        // 20 points in 5-10 min = 2-4 points per minute
+        if (newHunger > newEnergy && newEnergy < 100) {
+            const conversionRate = 3; // Fast conversion (3 points per minute)
+            const difference = newHunger - newEnergy;
+            const actualConversion = Math.min(difference, conversionRate * minutesPassed);
+
+            newHunger -= actualConversion;
+            newEnergy += actualConversion;
         }
 
         // Clamp values (minimum 1, maximum 100)
@@ -353,11 +361,27 @@ class StateManager {
             return;
         }
 
-        // Update progress bars
-        this.appView.updateProgressBars(this.currentState);
+        // Check if minigame is active - if so, don't update creature state
+        // Minigame manages its own state on the creature
+        const isMinigameActive = this.appView.minigameManager && this.appView.minigameManager.isGameActive();
 
-        // Update creature state
-        this.appView.creature.updateState(this.currentState);
+        // Update progress bars
+        // During minigame, show creature's live state (from minigame)
+        // Otherwise, show StateManager's state
+        if (!isMinigameActive) {
+            this.appView.updateProgressBars(this.currentState);
+        } else {
+            // During minigame, show creature's actual state (updated by minigame)
+            this.appView.updateProgressBars(this.appView.creature.puffState);
+        }
+
+        // Only update creature state if minigame is NOT active
+        // During minigame, let minigame control the creature's state
+        if (!isMinigameActive) {
+            this.appView.creature.updateState(this.currentState);
+        } else {
+            console.log('[StateManager] Minigame active - skipping creature state update');
+        }
 
         console.log('[StateManager] UI updated successfully');
     }
@@ -368,19 +392,22 @@ class StateManager {
     }
 
     // Handle state changes from minigame (live updates)
-    handleMinigameStateChanges(changes) {
-        if (!changes || !this.currentState) return;
+    // Now receives direct state values, NOT deltas
+    handleMinigameStateChanges(state) {
+        if (!state || !this.currentState) return;
 
-        // Apply changes to current state
-        if (changes.energyDelta !== undefined) {
-            this.currentState.energy = Math.max(1, Math.min(100, this.currentState.energy + changes.energyDelta));
-        }
-        if (changes.moodDelta !== undefined) {
-            this.currentState.mood = Math.max(1, Math.min(100, this.currentState.mood + changes.moodDelta));
-        }
-        if (changes.hungerDelta !== undefined) {
-            this.currentState.hunger = Math.max(1, Math.min(100, this.currentState.hunger + changes.hungerDelta));
-        }
+        console.log('[StateManager] Minigame state update:', state);
+        console.log('[StateManager] Before:', JSON.parse(JSON.stringify(this.currentState)));
+
+        // Create NEW object to avoid reference sharing
+        // IMPORTANT: Don't mutate existing object, create new one
+        this.currentState = {
+            hunger: state.hunger !== undefined ? Math.max(1, Math.min(100, Math.round(state.hunger))) : this.currentState.hunger,
+            mood: state.mood !== undefined ? Math.max(1, Math.min(100, Math.round(state.mood))) : this.currentState.mood,
+            energy: state.energy !== undefined ? Math.max(1, Math.min(100, Math.round(state.energy))) : this.currentState.energy
+        };
+
+        console.log('[StateManager] After:', JSON.parse(JSON.stringify(this.currentState)));
 
         // Update UI
         this.updateUI();

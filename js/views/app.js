@@ -57,12 +57,16 @@ const AppView = {
         this.inputHandler.setMinigameManager(this.minigameManager);
 
         // Setup state change callback for minigame
+        // DISABLED: Live updates cause reference sharing issues
+        // Only sync state when minigame ends, not during gameplay
+        /*
         this.minigameManager.onStateApplied((changes) => {
             if (this.stateManager) {
                 // Update state manager with changes
                 this.stateManager.handleMinigameStateChanges(changes);
             }
         });
+        */
 
         // Setup minigame UI
         this.setupMinigameUI();
@@ -192,12 +196,26 @@ const AppView = {
         this.closeFoodPanel();
         this.closeSettingsPanel();
 
-        // Get current puff state
+        // Sync creature with StateManager's current state first!
+        // Create NEW object to avoid reference sharing
+        if (this.stateManager && this.stateManager.currentState) {
+            const newState = {
+                hunger: this.stateManager.currentState.hunger,
+                mood: this.stateManager.currentState.mood,
+                energy: this.stateManager.currentState.energy
+            };
+            console.log('[App] Creating NEW puffState object for creature:', newState);
+            this.creature.puffState = newState;
+        }
+
+        // Get current puff state from creature (now synced)
         const currentState = {
             energy: this.creature.puffState.energy,
             mood: this.creature.puffState.mood,
             hunger: this.creature.puffState.hunger
         };
+
+        console.log('[App] Starting minigame with state:', currentState);
 
         // Start drift minigame
         this.minigameManager.startMinigame('drift', currentState);
@@ -207,9 +225,23 @@ const AppView = {
         if (this.minigameManager && this.minigameManager.isGameActive()) {
             this.minigameManager.endMinigame();
 
-            // Update progress bars with final state
+            // Sync final state from creature to StateManager
+            // Create NEW object to avoid reference sharing
             const finalState = this.creature.puffState;
+            if (this.stateManager && finalState) {
+                this.stateManager.currentState = {
+                    hunger: finalState.hunger,
+                    mood: finalState.mood,
+                    energy: finalState.energy
+                };
+                console.log('[App] Syncing final state to StateManager:', this.stateManager.currentState);
+                this.stateManager.updateUI();
+            }
+
+            // Update progress bars
             this.updateProgressBars(finalState);
+
+            console.log('[App] Minigame ended, final state:', finalState);
         }
     },
 
@@ -219,9 +251,10 @@ const AppView = {
         const energyBar = document.getElementById('energy-bar');
 
         // Handle null/undefined values - default to 50
-        const hunger = state.hunger ?? 50;
-        const mood = state.mood ?? 50;
-        const energy = state.energy ?? 50;
+        // IMPORTANT: Create NEW values to avoid reference sharing
+        const hunger = (state && state.hunger !== undefined) ? Math.round(state.hunger) : 50;
+        const mood = (state && state.mood !== undefined) ? Math.round(state.mood) : 50;
+        const energy = (state && state.energy !== undefined) ? Math.round(state.energy) : 50;
 
         if (hungerBar) hungerBar.style.width = hunger + '%';
         if (moodBar) moodBar.style.width = mood + '%';

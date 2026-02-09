@@ -24,9 +24,6 @@ class DriftGame extends Minigame {
         this.baseEnergyDecayRate = 0.05; // per second (faster than normal)
         this.lastDecayTime = 0;
 
-        // Mood boost on target catch
-        this.moodBoostPerTarget = 5;
-
         // Touch input
         this.activeTouches = new Map(); // touchId -> {x, y}
     }
@@ -101,9 +98,16 @@ class DriftGame extends Minigame {
         // Update target
         if (this.targetCircle) {
             const hitbox = this.driftSolver.getHitbox();
+
+            // DEBUG: Log every ~2 seconds
+            if (Math.random() < 0.03) {
+                console.log('[DriftGame] Target active: yes, hitbox:', hitbox, 'softBody.puffState:', this.softBody.puffState);
+            }
+
             const justCompleted = this.targetCircle.update(hitbox, deltaTime);
 
             if (justCompleted) {
+                console.log('[DriftGame] Target just completed! Calling onTargetCaught()');
                 this.onTargetCaught();
             }
         }
@@ -128,13 +132,12 @@ class DriftGame extends Minigame {
             const decayAmount = this.baseEnergyDecayRate * (timeSinceLastDecay / 1000);
             this.currentEnergy = Math.max(1, this.currentEnergy - decayAmount);
 
-            // Update softBody state
+            // Update softBody state (but don't notify - only notify on target caught)
             if (this.softBody.puffState) {
                 this.softBody.puffState.energy = Math.round(this.currentEnergy);
             }
 
-            // Notify state change for UI update
-            this.notifyStateChange();
+            // NO notifyStateChange() here - only notify when target is caught!
 
             this.lastDecayTime = now;
         }
@@ -146,30 +149,61 @@ class DriftGame extends Minigame {
     onTargetCaught() {
         this.targetsCaught++;
 
+        // DEBUG: Log full state before
+        console.log('======== TARGET CAUGHT ========');
+        console.log('[BEFORE] full softBody.puffState:', JSON.stringify(this.softBody.puffState));
+        console.log('[BEFORE] Energy:', this.softBody.puffState?.energy, 'Mood:', this.softBody.puffState?.mood, 'Hunger:', this.softBody.puffState?.hunger);
+
         // Spawn particle effect at target position
         if (this.targetCircle && this.particleSystem) {
             this.particleSystem.spawn(
                 this.targetCircle.x,
                 this.targetCircle.y,
                 30, // particle count
-                '150, 255, 150' // green color
+                '100, 200, 100' // green color (darker to match progress)
             );
         }
 
-        // Boost mood
+        // Convert energy to mood (4-5 energy → 4-5 mood)
+        const currentEnergy = this.softBody.puffState?.energy || 0;
         const currentMood = this.softBody.puffState?.mood || 50;
-        const newMood = Math.min(100, currentMood + this.moodBoostPerTarget);
-        if (this.softBody.puffState) {
-            this.softBody.puffState.mood = Math.round(newMood);
+
+        if (currentEnergy > 5) { // Need at least some energy
+            // Convert 4-5 energy to mood
+            const energyToConvert = 4 + Math.floor(Math.random() * 2); // 4 or 5
+            const actualEnergyLoss = Math.min(energyToConvert, currentEnergy - 1); // Keep at least 1 energy
+            const moodGain = actualEnergyLoss; // 1:1 conversion
+
+            console.log(`[CONVERSION] Energy to convert: ${energyToConvert}, Actual loss: ${actualEnergyLoss}, Mood gain: ${moodGain}`);
+            console.log(`[CONVERSION] Calculation: newEnergy = max(1, ${currentEnergy} - ${actualEnergyLoss}) = ${Math.max(1, currentEnergy - actualEnergyLoss)}`);
+            console.log(`[CONVERSION] Calculation: newMood = min(100, ${currentMood} + ${moodGain}) = ${Math.min(100, currentMood + moodGain)}`);
+
+            if (this.softBody.puffState) {
+                // Create NEW object to avoid reference sharing with StateManager
+                this.softBody.puffState = {
+                    hunger: this.softBody.puffState.hunger,
+                    energy: Math.max(1, currentEnergy - actualEnergyLoss),
+                    mood: Math.min(100, currentMood + moodGain)
+                };
+                console.log('[UPDATED] NEW softBody.puffState object:', JSON.stringify(this.softBody.puffState));
+            }
+        } else {
+            console.log('[SKIP] Not enough energy (', currentEnergy, '<= 5), skipping conversion');
         }
 
-        console.log(`Target caught! Total: ${this.targetsCaught}`);
+        // DEBUG: Log state after
+        console.log('[AFTER] Energy:', this.softBody.puffState?.energy, 'Mood:', this.softBody.puffState?.mood, 'Hunger:', this.softBody.puffState?.hunger);
+        console.log(`Targets caught: ${this.targetsCaught}`);
+        console.log('==============================');
 
         // Spawn new target
         this.spawnNewTarget();
 
-        // Notify state change
-        this.notifyStateChange();
+        // NO NOTIFY DURING GAME - StateManager updates only when game ends
+        // This prevents reference sharing and infinite update loops
+        // console.log('[CALLING notifyStateChange...]');
+        // this.notifyStateChange();
+        // console.log('[notifyStateChange DONE]');
     }
 
     /**
@@ -265,17 +299,16 @@ class DriftGame extends Minigame {
 
     /**
      * Get state changes when game ends
+     * NO LONGER USED - Live updates handle everything now
+     * Returns empty deltas since state is already synced in real-time
      */
     getStateChanges() {
-        // Calculate energy delta (negative = lost energy)
-        const energyDelta = this.currentEnergy - this.initialState.energy;
-
-        // Calculate mood delta (positive = gained mood from targets)
-        const moodDelta = (this.softBody.puffState?.mood || this.initialState.mood) - this.initialState.mood;
-
+        // State is already synced via notifyStateChange() during gameplay
+        // Return zero deltas to prevent double-update
+        console.log('[DriftGame] getStateChanges called - returning zero deltas (state already synced)');
         return {
-            energyDelta: Math.round(energyDelta),
-            moodDelta: Math.round(moodDelta),
+            energyDelta: 0,
+            moodDelta: 0,
             hungerDelta: 0
         };
     }

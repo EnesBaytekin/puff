@@ -99,10 +99,19 @@ class Minigame {
 
     /**
      * Notify state change (call this during game to update UI)
+     * Sends direct state values, NOT deltas, to avoid double-update issues
      */
     notifyStateChange() {
         if (this.onStateChangeCallback) {
-            const changes = this.getStateChanges();
+            // Send direct state values from softBody, not deltas
+            // The callback will handle syncing properly
+            const currentState = this.softBody?.puffState || {};
+            const changes = {
+                energy: currentState.energy,
+                mood: currentState.mood,
+                hunger: currentState.hunger
+            };
+            console.log('[Minigame] notifyStateChange sending:', changes);
             this.onStateChangeCallback(changes);
         }
     }

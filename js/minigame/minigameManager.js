@@ -38,6 +38,8 @@ class MinigameManager {
             return;
         }
 
+        console.log('[MinigameManager] Starting minigame with initialState:', initialState);
+
         const MinigameClass = this.registeredMinigames.get(minigameName);
         if (!MinigameClass) {
             console.error(`Minigame '${minigameName}' not found`);
@@ -55,6 +57,8 @@ class MinigameManager {
         this.currentMinigame.start(initialState);
         this.isMinigameActive = true;
 
+        console.log('[MinigameManager] Minigame started. softBody.puffState:', this.softBody.puffState);
+
         // Show minigame UI
         this.showMinigameUI();
 
@@ -69,11 +73,13 @@ class MinigameManager {
             return;
         }
 
-        // Get final state changes
+        // Get final state changes (should be zero now - live updates handle everything)
         const stateChanges = this.currentMinigame.end();
 
-        // Apply state changes
-        this.applyStateChanges(stateChanges);
+        console.log('[MinigameManager] Minigame ended, state changes (should be zero):', stateChanges);
+
+        // NO LONGER applying state changes here - live updates already synced everything
+        // this.applyStateChanges(stateChanges); // REMOVED - prevents double-update
 
         // Cleanup
         this.currentMinigame = null;
@@ -85,7 +91,7 @@ class MinigameManager {
         // Hide minigame UI
         this.hideMinigameUI();
 
-        console.log('Minigame ended, state changes:', stateChanges);
+        console.log('Minigame ended cleanly');
     }
 
     /**
@@ -166,6 +172,7 @@ class MinigameManager {
      * Handle state changes during minigame (live updates)
      */
     onMinigameStateChange(changes) {
+        console.log('[MinigameManager] State change received:', changes);
         // Update progress bars in real-time
         if (changes && typeof this.onStateApplied === 'function') {
             this.onStateApplied(changes);
