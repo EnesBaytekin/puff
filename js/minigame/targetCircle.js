@@ -87,42 +87,42 @@ class TargetCircle {
         const pulseScale = 1 + Math.sin(this.pulsePhase) * 0.02;
         const pulseRadius = this.radius * pulseScale;
 
-        // Draw filled background (shows progress area)
+        // Draw filled background - warm amber/gold
         ctx.beginPath();
         ctx.arc(this.x, this.y, pulseRadius, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(200, 220, 255, 0.1)';
+        ctx.fillStyle = 'rgba(255, 180, 50, 0.12)'; // Amber
         ctx.fill();
 
-        // Draw progress arc (fills up as player holds puff inside)
+        // Draw dashed circle (main target indicator) - amber/orange
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, pulseRadius, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 160, 60, 0.9)'; // Orange/amber, very visible
+        ctx.lineWidth = 2; // Thin
+        ctx.setLineDash([15, 10]); // Dashed
+        ctx.stroke();
+        ctx.setLineDash([]); // Reset dash
+
+        // Draw progress arc LAST (on top) - vibrant green, solid, thicker
         if (progress > 0) {
             ctx.beginPath();
             ctx.arc(this.x, this.y, pulseRadius, -Math.PI / 2, -Math.PI / 2 + (Math.PI * 2 * progress));
-            ctx.strokeStyle = 'rgba(150, 200, 255, 0.6)';
-            ctx.lineWidth = 3;
+            ctx.strokeStyle = 'rgba(60, 180, 60, 1)'; // Darker vibrant green, solid
+            ctx.lineWidth = 7; // Thicker, more prominent
             ctx.stroke();
         }
-
-        // Draw dashed circle (main target indicator)
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, pulseRadius, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(100, 150, 200, 0.5)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([10, 10]); // Dashed line
-        ctx.stroke();
-        ctx.setLineDash([]); // Reset dash
 
         // Draw completion effect
         if (this.isCompleted) {
             ctx.beginPath();
             ctx.arc(this.x, this.y, pulseRadius, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(150, 255, 150, 0.8)';
-            ctx.lineWidth = 4;
+            ctx.strokeStyle = 'rgba(100, 230, 100, 1)'; // Bright green
+            ctx.lineWidth = 8;
             ctx.stroke();
 
             // Glow effect
             const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, pulseRadius * 1.5);
-            gradient.addColorStop(0, 'rgba(150, 255, 150, 0.3)');
-            gradient.addColorStop(1, 'rgba(150, 255, 150, 0)');
+            gradient.addColorStop(0, 'rgba(100, 230, 100, 0.6)');
+            gradient.addColorStop(1, 'rgba(100, 230, 100, 0)');
             ctx.fillStyle = gradient;
             ctx.fill();
         }
