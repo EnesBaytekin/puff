@@ -69,10 +69,10 @@ class InputHandler {
 
     // Continue dragging (store position for continuous application)
     drag(x, y, identifier = 'mouse') {
-        // Forward to minigame if active
+        // During minigame, don't forward any motion events
+        // Only the initial touch/click matters (handled in startDrag)
         if (this.isMinigameActive()) {
-            this.minigameManager.handleInput('touchmove', { x, y, identifier });
-            return;
+            return; // No motion-based pushing in minigame
         }
 
         if (this.isDragging) {

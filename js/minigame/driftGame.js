@@ -280,13 +280,16 @@ class DriftGame extends Minigame {
 
     /**
      * Handle touch move
+     * NO PUSH - only initial touch/click applies force (in handleTouchStart)
      */
     handleTouchMove(data) {
         const touchId = data.identifier || 'mouse';
         this.activeTouches.set(touchId, { x: data.x, y: data.y });
 
-        // Continuous push while dragging
-        this.driftSolver.applyPushForce(data.x, data.y);
+        // NO push on motion - only on initial touch/click
+        // This makes both mobile and desktop work the same way:
+        // - Single tap/click = single push
+        // - Holding/dragging = no additional force
     }
 
     /**
