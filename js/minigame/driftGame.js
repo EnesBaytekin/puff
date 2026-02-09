@@ -188,8 +188,7 @@ class DriftGame extends Minigame {
             this.particleSystem.render(ctx);
         }
 
-        // Render stats (optional, minimal)
-        this.renderStats(ctx);
+        // Stats hidden - no text overlay
     }
 
     /**

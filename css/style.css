@@ -730,10 +730,12 @@ body {
     transform: translateX(-20px);
 }
 
+/* Make exit button fully opaque when active */
 .minigame-exit-btn.active {
     opacity: 1;
     pointer-events: all;
     transform: translateX(0);
+    background: var(--bg-color); /* Use solid bg color, not panel-bg */
 }
 
 .minigame-exit-btn:hover {
@@ -746,7 +748,7 @@ body {
 }
 
 /* Theme-specific minigame exit button styles */
-.theme-dark .minigame-exit-btn {
-    background: var(--panel-bg);
-    border-color: rgba(255, 255, 255, 0.1);
+.theme-dark .minigame-exit-btn.active {
+    background: var(--bg-color);
+    border-color: rgba(255, 255, 255, 0.2);
 }
