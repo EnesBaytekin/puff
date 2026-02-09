@@ -40,9 +40,11 @@ class PhysicsSolver {
         // 0.001 (exhausted) to 0.01 (full energy)
         const dynamicCenteringStrength = 0.001 + energyFactor * 0.009;
 
-        // Extra stiffness for low energy - prevents wobbling
-        // Low energy = direct position correction (no physics), high energy = normal physics
-        const useDirectCorrection = energy < 30; // Below 30 energy
+        // Extra stiffness for low energy - exponential decay (logarithmic-like curve)
+        // Low energy = heavy damping, quickly drops off as energy increases
+        // Formula: 0.12 * e^(-4 * energyFactor)
+        // Energy 0 → 0.12, Energy 25 → 0.035, Energy 50 → 0.01, Energy 75 → 0.003, Energy 100 → ~0
+        const extraDampingFactor = 0.12 * Math.exp(-4 * energyFactor);
 
         // Dynamic idle delay - low energy takes much longer to start idling
         const dynamicIdleDelay = 5000 + (1 - energyFactor) * 15000; // 5s (high energy) to 20s (low energy)
@@ -141,13 +143,14 @@ class PhysicsSolver {
             // Apply idle movement force (low energy = barely moves)
             particle.applyForce(idleForceX * particle.mass * 0.1, idleForceY * particle.mass * 0.1);
 
-            // Extra damping for low energy - directly reduce velocity to prevent oscillation
-            if (useDirectCorrection && !isIdling) {
-                // When returning to center after drag, heavily dampen
+            // Extra damping for low energy - proportional to energy, no threshold
+            // Applied when returning to center after drag (not idling)
+            if (!isIdling && extraDampingFactor > 0.001) {
                 const velX = particle.getVelocityX();
                 const velY = particle.getVelocityY();
-                particle.oldX = particle.x - velX * 0.9; // Heavy damping
-                particle.oldY = particle.y - velY * 0.9;
+                // Apply extra damping proportional to low energy
+                particle.oldX = particle.x - velX * (1 - extraDampingFactor);
+                particle.oldY = particle.y - velY * (1 - extraDampingFactor);
             }
         }
 
