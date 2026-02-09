@@ -241,6 +241,9 @@ const AppView = {
                 // Update minigame
                 this.minigameManager.update(deltaTime);
 
+                // Apply organic deformation for visual morphing based on mood/energy
+                this.creature.applyOrganicDeformation();
+
                 // Clear canvas
                 this.canvas.clear();
 
