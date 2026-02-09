@@ -32,8 +32,17 @@ class PhysicsSolver {
         // Low energy = high damping (sluggish), high energy = low damping (responsive)
         const energy = softBody.puffState.energy || 50;
         const energyFactor = energy / 100; // 0 = exhausted, 1 = full energy
-        // Damping: 0.998 (exhausted, barely moves) to 0.95 (full energy, normal)
-        const dynamicDamping = 0.998 - energyFactor * 0.048;
+        // Damping: 0.9995 (exhausted, zero oscillation) to 0.95 (full energy, normal)
+        const dynamicDamping = 0.9995 - energyFactor * 0.0495;
+
+        // Dynamic centering strength based on energy
+        // Low energy = very weak centering (sluggish return), high energy = normal centering
+        // 0.001 (exhausted) to 0.01 (full energy)
+        const dynamicCenteringStrength = 0.001 + energyFactor * 0.009;
+
+        // Extra stiffness for low energy - prevents wobbling
+        // Low energy = direct position correction (no physics), high energy = normal physics
+        const useDirectCorrection = energy < 30; // Below 30 energy
 
         // Dynamic idle delay - low energy takes much longer to start idling
         const dynamicIdleDelay = 5000 + (1 - energyFactor) * 15000; // 5s (high energy) to 20s (low energy)
@@ -123,12 +132,23 @@ class PhysicsSolver {
             const dx = centerX - particle.x;
             const dy = centerY - particle.y;
 
-            // Gentle spring force toward center (weaker when idling)
-            const centeringStrength = isIdling ? 0.002 : 0.01;
+            // Gentle spring force toward center
+            // When idling, use even weaker force (handled by dynamicCenteringStrength being energy-based)
+            // Low energy = very weak centering (sluggish), high energy = normal
+            const centeringStrength = isIdling ? dynamicCenteringStrength * 0.3 : dynamicCenteringStrength;
             particle.applyForce(dx * centeringStrength, dy * centeringStrength);
 
-            // Apply idle movement force
+            // Apply idle movement force (low energy = barely moves)
             particle.applyForce(idleForceX * particle.mass * 0.1, idleForceY * particle.mass * 0.1);
+
+            // Extra damping for low energy - directly reduce velocity to prevent oscillation
+            if (useDirectCorrection && !isIdling) {
+                // When returning to center after drag, heavily dampen
+                const velX = particle.getVelocityX();
+                const velY = particle.getVelocityY();
+                particle.oldX = particle.x - velX * 0.9; // Heavy damping
+                particle.oldY = particle.y - velY * 0.9;
+            }
         }
 
         // Update particle positions (Verlet integration)
