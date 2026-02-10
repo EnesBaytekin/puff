@@ -56,8 +56,9 @@ const CustomizeView = {
     },
 
     createPreviewPuff() {
-        const centerX = this.previewCanvas.width / 2;
-        const centerY = this.previewCanvas.height / 2;
+        // Use CSS dimensions, not canvas internal dimensions
+        const centerX = this.previewCanvas.clientWidth / 2;
+        const centerY = this.previewCanvas.clientHeight / 2;
         const radius = 50; // Smaller radius for preview
 
         // Get initial color (vibrant pastel: 85% saturation, 78% lightness)
@@ -84,7 +85,7 @@ const CustomizeView = {
 
     startPreviewAnimation() {
         const animate = () => {
-            // Clear canvas
+            // Clear canvas (use internal dimensions)
             this.previewCtx.clearRect(0, 0, this.previewCanvas.width, this.previewCanvas.height);
 
             // Update puff animation

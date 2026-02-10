@@ -318,29 +318,227 @@ class FoodDragHandler {
 
         const x = creature.centerParticle.x;
         const y = creature.centerParticle.y;
+        const foodEmoji = this.draggedFood.emoji;
 
-        const particles = ['✨', '⭐', '💫', '🌟'];
+        // Phase 1: Food approaching mouth (0-300ms)
+        this.createFoodTrace(x, y, foodEmoji);
 
-        for (let i = 0; i < 8; i++) {
+        // Phase 2: Crumbs flying out (300-600ms)
+        setTimeout(() => {
+            this.createCrumbs(x, y);
+        }, 300);
+
+        // Phase 3: Chew burst (multiple bursts during chewing)
+        for (let i = 0; i < 4; i++) {
+            setTimeout(() => {
+                this.createChewBurst(x, y);
+            }, 400 + i * 200);
+        }
+
+        // Phase 4: Swallowing effect (after chewing)
+        setTimeout(() => {
+            this.createSwallowEffect(x, y);
+        }, 1200);
+
+        // Phase 5: Satisfaction sigh (final)
+        setTimeout(() => {
+            this.createSatisfactionEffect(x, y, creature.puffState.mood);
+        }, 1500);
+    }
+
+    createFoodTrace(targetX, targetY, foodEmoji) {
+        // Create mini food emojis flying toward mouth
+        for (let i = 0; i < 3; i++) {
             const particle = document.createElement('div');
-            particle.className = 'eat-particle';
-            particle.textContent = particles[Math.floor(Math.random() * particles.length)];
+            particle.className = 'eat-particle food-trace';
+            particle.textContent = foodEmoji;
+            particle.style.fontSize = '20px';
 
-            // Random offset around puff
-            const offsetX = (Math.random() - 0.5) * 100;
-            const offsetY = (Math.random() - 0.5) * 100;
+            // Start from random position around puff
+            const startAngle = Math.random() * Math.PI * 2;
+            const startDist = 80 + Math.random() * 40;
+            const startX = targetX + Math.cos(startAngle) * startDist;
+            const startY = targetY + Math.sin(startAngle) * startDist;
+
+            particle.style.left = startX + 'px';
+            particle.style.top = startY + 'px';
+
+            // Animate to center (mouth)
+            particle.animate([
+                { left: startX + 'px', top: startY + 'px', opacity: 1, transform: 'scale(1) rotate(0deg)' },
+                { left: targetX + 'px', top: targetY + 'px', opacity: 0, transform: 'scale(0.3) rotate(180deg)' }
+            ], {
+                duration: 400,
+                easing: 'ease-in',
+                delay: i * 50,
+                fill: 'forwards'
+            });
+
+            document.body.appendChild(particle);
+            setTimeout(() => particle.remove(), 500);
+        }
+    }
+
+    createCrumbs(x, y) {
+        // Small crumb particles flying outward
+        const crumbs = ['•', '·', '⋅', '∗'];
+
+        for (let i = 0; i < 12; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'eat-particle crumb';
+            particle.textContent = crumbs[Math.floor(Math.random() * crumbs.length)];
+            particle.style.fontSize = (8 + Math.random() * 8) + 'px';
+            particle.style.color = '#FFD700'; // Golden crumbs
+
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 20 + Math.random() * 30;
+            const offsetX = Math.cos(angle) * dist;
+            const offsetY = Math.sin(angle) * dist;
 
             particle.style.left = (x + offsetX) + 'px';
             particle.style.top = (y + offsetY) + 'px';
-            particle.style.animationDelay = (i * 0.05) + 's';
+
+            // Fly outward and fade
+            const endDist = 50 + Math.random() * 30;
+            particle.animate([
+                { transform: 'translate(0, 0) scale(1)', opacity: 1 },
+                { transform: `translate(${Math.cos(angle) * endDist}px, ${Math.sin(angle) * endDist}px) scale(0)`, opacity: 0 }
+            ], {
+                duration: 600,
+                easing: 'ease-out',
+                delay: Math.random() * 100,
+                fill: 'forwards'
+            });
 
             document.body.appendChild(particle);
-
-            // Remove after animation
-            setTimeout(() => {
-                particle.remove();
-            }, 1000);
+            setTimeout(() => particle.remove(), 800);
         }
+    }
+
+    createChewBurst(x, y) {
+        // Burst of sparkles during chewing
+        const sparkles = ['✨', '⭐', '💫', '✧', '★'];
+
+        for (let i = 0; i < 6; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'eat-particle chew-sparkle';
+            particle.textContent = sparkles[Math.floor(Math.random() * sparkles.length)];
+            particle.style.fontSize = (12 + Math.random() * 12) + 'px';
+
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 30 + Math.random() * 20;
+
+            particle.style.left = (x + Math.cos(angle) * dist) + 'px';
+            particle.style.top = (y + Math.sin(angle) * dist) + 'px';
+
+            // Spiral outward
+            particle.animate([
+                { transform: 'rotate(0deg) scale(0.5)', opacity: 0 },
+                { transform: 'rotate(180deg) scale(1.2)', opacity: 1, offset: 0.5 },
+                { transform: 'rotate(360deg) scale(0)', opacity: 0 }
+            ], {
+                duration: 500,
+                easing: 'ease-out',
+                fill: 'forwards'
+            });
+
+            document.body.appendChild(particle);
+            setTimeout(() => particle.remove(), 600);
+        }
+    }
+
+    createSwallowEffect(x, y) {
+        // Swallowing - downward ripple effect
+        for (let i = 0; i < 3; i++) {
+            const ripple = document.createElement('div');
+            ripple.className = 'eat-particle swallow-ripple';
+            ripple.style.border = '2px solid rgba(255, 182, 193, 0.6)';
+            ripple.style.borderRadius = '50%';
+            ripple.style.width = '20px';
+            ripple.style.height = '20px';
+
+            ripple.style.left = x + 'px';
+            ripple.style.top = y + 'px';
+            ripple.style.transform = 'translate(-50%, -50%)';
+
+            // Expand outward and move down
+            ripple.animate([
+                { width: '20px', height: '20px', opacity: 0.8, transform: 'translate(-50%, -50%) translateY(0)' },
+                { width: '80px', height: '80px', opacity: 0, transform: 'translate(-50%, -50%) translateY(30px)' }
+            ], {
+                duration: 500,
+                easing: 'ease-out',
+                delay: i * 100,
+                fill: 'forwards'
+            });
+
+            document.body.appendChild(ripple);
+            setTimeout(() => ripple.remove(), 700);
+        }
+    }
+
+    createSatisfactionEffect(x, y, mood) {
+        // Satisfaction effect - depends on mood
+        const particles = mood < 30
+            ? ['💕', '💖', '💗', '❤️'] // Happy hearts
+            : ['✨', '⭐', '💫', '🌟']; // Neutral sparkles
+
+        for (let i = 0; i < 5; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'eat-particle satisfaction';
+            particle.textContent = particles[Math.floor(Math.random() * particles.length)];
+            particle.style.fontSize = (14 + Math.random() * 10) + 'px';
+
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 40 + Math.random() * 30;
+
+            particle.style.left = (x + Math.cos(angle) * dist) + 'px';
+            particle.style.top = (y + Math.sin(angle) * dist - 20) + 'px'; // Slightly above
+
+            // Float upward and fade
+            particle.animate([
+                { transform: 'translateY(0) scale(0.5)', opacity: 0 },
+                { transform: 'translateY(-20px) scale(1.2)', opacity: 1, offset: 0.3 },
+                { transform: 'translateY(-50px) scale(0.8)', opacity: 0 }
+            ], {
+                duration: 800,
+                easing: 'ease-out',
+                delay: i * 80,
+                fill: 'forwards'
+            });
+
+            document.body.appendChild(particle);
+            setTimeout(() => particle.remove(), 1000);
+        }
+
+        // Extra: "Mmm" text bubble
+        const mmm = document.createElement('div');
+        mmm.className = 'eat-particle mmm-bubble';
+        mmm.textContent = 'Mmm~';
+        mmm.style.fontSize = '16px';
+        mmm.style.fontWeight = 'bold';
+        mmm.style.color = '#FF69B4';
+        mmm.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+        mmm.style.padding = '4px 10px';
+        mmm.style.borderRadius = '20px';
+        mmm.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
+
+        mmm.style.left = (x + 50) + 'px';
+        mmm.style.top = (y - 60) + 'px';
+
+        mmm.animate([
+            { transform: 'scale(0)', opacity: 0 },
+            { transform: 'scale(1.1)', opacity: 1, offset: 0.3 },
+            { transform: 'scale(1)', opacity: 1, offset: 0.7 },
+            { transform: 'scale(0.8)', opacity: 0 }
+        ], {
+            duration: 1200,
+            easing: 'ease-out',
+            fill: 'forwards'
+        });
+
+        document.body.appendChild(mmm);
+        setTimeout(() => mmm.remove(), 1300);
     }
 
     closeFoodPanel() {
