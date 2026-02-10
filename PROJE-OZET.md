@@ -505,7 +505,57 @@ server/
 
 ## Son Yapılan Değişiklikler (Recent Changes)
 
-### Minigame System & State Management Revamp (En Son) ✅
+### Auth System Complete Redesign (En Son) ✅
+**Dosyalar:** `server/db.js`, `server/routes/auth.js`, `js/api.js`, `js/router.js`, `index.html`, `js/views/login.js`, `js/views/register.js`, `js/views/customize.js`, `css/style.css`
+
+**Username-Based Auth:**
+- Email sistemi tamamen kaldırıldı, username ile giriş yapılıyor
+- Database schema: `email VARCHAR(255)` → `username VARCHAR(20) UNIQUE NOT NULL`
+- Username validation: Alphanumeric + underscore, 3-20 characters (`/^[a-zA-Z0-9_]{3,20}$/`)
+- JWT payload artık username içeriyor: `{ userId, username }`
+
+**Auth Guards Implementation:**
+- `Router.handleNavigationEvent()` method ile navigation guard sistemi
+- Protected routes (app, customize): Auth yoksa login'e redirect
+- Auth routes (login, register): Auth varsa app/customize'e redirect
+- **Critical fix:** Logout sonrası back button protected sayfalara sokmuyor
+- **Redirect fix:** Register→customize→app akışı düzeltildi (customize'de çıkıp tekrar girince sorun yok)
+
+**App Rebrand:**
+- Title: "Digitoy" → "Puff Pet"
+- Tüm UI'da "Puff Pet" olarak güncellendi
+- Welcome messages güncellendi
+
+**Login/Register UI Redesign:**
+- Mascot emoji'ler (🐱 login, ✨ register, 🎨 customize)
+- Card style forms (shadow, border-radius, padding)
+- Gradient buttons (lineer gradient, hover effects)
+- Better typography (letter-spacing, font-weight)
+- Floating animation for mascot (`@keyframes float`)
+- Autocomplete attributes (username, current-password, new-password)
+
+**Color Picker Revamp:**
+- HSV (3 slider) → Hue-only (1 slider) sistemi
+- Fixed saturation: 85%
+- Fixed lightness: 78%
+- Rainbow gradient slider (hue spectrum)
+- Desktop/mobile consistent (browser-native picker yok)
+
+**Animated Puff Preview:**
+- Canvas-based preview in customize screen
+- Real softbody creature with animations
+- Live color update (hue slider değiştikçe)
+- Happy state (mood=0, energy=100, hunger=100)
+
+**Physics Improvements:**
+- Low energy sluggish behavior (exponential damping)
+- Formula: `0.12 * e^(-4 * energyFactor)`
+- Energy 0 → 0.12 (çok ağır damping, hemen durur)
+- Energy 50 → 0.016 (orta)
+- Energy 100 → ~0 (normal)
+- Parmağı bıraktığında sallanmadan yavaşça merkeze gider
+
+### Minigame System & State Management Revamp ✅
 **Dosyalar:** `js/minigame/`, `js/stateManager.js`, `js/input.js`, `js/views/app.js`
 
 **Minigame System:**
@@ -782,13 +832,25 @@ ENERGY_DECAY_PER_MIN = 99 / 540;
 
 ## Son Güncelleme Tarihi
 
-2026-02-09 - v1.1.0
+2026-02-09 - v1.1.1
+- **Username-Based Auth:** Email sistemi kaldırıldı, username ile kayıt/giriş
+- **Auth System Redesign:** App name "Puff Pet" olarak değiştirildi
+- **Login/Register UI:** Mascot emoji'ler, card style form, gradient butonlar
+- **Auth Guards:** Logout sonrası back button protected sayfalara sokmuyor
+- **Redirect Fix:** Register→customize→app akışı düzeltildi
+- **Color Picker Revamp:** Hue-only slider, 85% sat / 78% lightness (canlı pastel)
+- **Puff Preview:** Customize ekranında animated softbody creature
+- **Minigame Center Fix:** Minigame başladığında puff tam ortaya teleport oluyor
+- **Physics Improvements:** Low energy sluggish behavior (exponential damping)
 - **Minigame System:** Drift & Catch minigame eklendi
 - **State Management:** Conversion sistemi revamp edildi
 - **Critical Bugs:** Reference sharing, double-update, creature reversion fixlendi
 - **Input Handling:** Desktop/mobile unified (click/tap = single push)
 - **Decay Rate:** Hepsi 9 saatte 100→1
 - **Cache-Busting:** Development cache sorunları çözüldü
+
+2026-02-09 - v1.1.0
+- Minigame system ilk versiyonu
 
 2026-02-05 - v1.0.5
 - Complete UI/UX redesign (modal panels)
