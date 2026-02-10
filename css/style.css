@@ -564,52 +564,110 @@ body {
 .food-slots {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
+    gap: 16px;
 }
 
 .food-slot {
-    aspect-ratio: 1;
+    min-height: 130px;
     background-color: var(--food-slot-bg);
     border: 2px solid var(--border-color);
     border-radius: 12px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     cursor: pointer;
     transition: all 0.2s;
     position: relative;
-    padding: 8px;
+    padding: 12px;
+    gap: 5px;
 }
 
 .food-slot:hover {
     border-color: var(--button-hover-bg);
     background-color: var(--food-slot-hover-bg);
-    transform: scale(1.05);
+    transform: scale(1.03);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 1;
 }
 
 .food-slot:active {
-    transform: scale(0.95);
+    transform: scale(0.97);
 }
 
 .food-slot .food-emoji {
-    font-size: 32px;
+    font-size: 40px;
     line-height: 1;
+    flex-shrink: 0;
 }
 
 .food-slot .food-name {
-    font-size: 11px;
-    color: #666;
-    margin-top: 4px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 2px;
     text-align: center;
     font-weight: 500;
+    flex-shrink: 0;
 }
 
-.food-slot .food-bonus {
+/* Mini stats for food bonuses */
+.food-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 6px;
+    width: 100%;
+    flex: 1;
+}
+
+.food-stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+}
+
+.stat-icon {
+    font-size: 11px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.stat-bar {
+    flex: 1;
+    height: 5px;
+    background-color: var(--progress-bar-bg);
+    border-radius: 2.5px;
+    overflow: hidden;
+    position: relative;
+    min-width: 0;
+}
+
+.stat-fill {
+    height: 100%;
+    border-radius: 2.5px;
+    transition: width 0.3s;
+}
+
+.hunger-fill {
+    background: linear-gradient(90deg, #ff8c42, #ffa62b);
+}
+
+.mood-fill {
+    background: linear-gradient(90deg, #ffb6c1, #ffd6e8);
+}
+
+.energy-fill {
+    background: linear-gradient(90deg, #ffd93d, #ffed4a);
+}
+
+.stat-value {
     font-size: 10px;
-    color: #999;
-    margin-top: 2px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    min-width: 20px;
+    text-align: right;
 }
 
 /* ==============================
@@ -770,6 +828,48 @@ body {
     .food-slots {
         grid-template-columns: repeat(3, 1fr);
         gap: 10px;
+    }
+
+    .food-slot {
+        min-height: 85px;
+        padding: 6px;
+        gap: 2px;
+    }
+
+    .food-slot .food-emoji {
+        font-size: 28px;
+    }
+
+    .food-slot .food-name {
+        font-size: 10px;
+        margin-top: 1px;
+    }
+
+    .food-stats {
+        gap: 2px;
+        margin-top: 2px;
+    }
+
+    .food-stat {
+        gap: 2px;
+    }
+
+    .stat-icon {
+        font-size: 8px;
+    }
+
+    .stat-bar {
+        height: 3px;
+        border-radius: 1.5px;
+    }
+
+    .stat-fill {
+        border-radius: 1.5px;
+    }
+
+    .stat-value {
+        font-size: 7px;
+        min-width: 14px;
     }
 
     .minigame-exit-btn {

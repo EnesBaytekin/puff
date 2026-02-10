@@ -137,10 +137,13 @@ class FoodDragHandler {
             slot.className = 'food-slot';
             slot.dataset.foodId = food.id;
 
+            // Create mini stats for each food
+            const statsHtml = this.createFoodStats(food);
+
             slot.innerHTML = `
                 <div class="food-emoji">${food.emoji}</div>
                 <div class="food-name">${food.name}</div>
-                <div class="food-bonus">+${food.hungerBonus}</div>
+                ${statsHtml}
             `;
 
             // Setup drag events
@@ -148,6 +151,54 @@ class FoodDragHandler {
 
             slotsContainer.appendChild(slot);
         });
+    }
+
+    createFoodStats(food) {
+        // Calculate percentages relative to full stat bar (100)
+        const hungerPct = food.hungerBonus;
+        const moodPct = food.moodBonus;
+        const energyPct = food.energyBonus;
+
+        let statsHtml = '<div class="food-stats">';
+
+        if (food.hungerBonus > 0) {
+            statsHtml += `
+                <div class="food-stat" title="Fullness">
+                    <span class="stat-icon">🍖️</span>
+                    <div class="stat-bar">
+                        <div class="stat-fill hunger-fill" style="width: ${hungerPct}%"></div>
+                    </div>
+                    <span class="stat-value">+${food.hungerBonus}</span>
+                </div>
+            `;
+        }
+
+        if (food.moodBonus > 0) {
+            statsHtml += `
+                <div class="food-stat" title="Mood">
+                    <span class="stat-icon">😊</span>
+                    <div class="stat-bar">
+                        <div class="stat-fill mood-fill" style="width: ${moodPct}%"></div>
+                    </div>
+                    <span class="stat-value">+${food.moodBonus}</span>
+                </div>
+            `;
+        }
+
+        if (food.energyBonus > 0) {
+            statsHtml += `
+                <div class="food-stat" title="Energy">
+                    <span class="stat-icon">⚡</span>
+                    <div class="stat-bar">
+                        <div class="stat-fill energy-fill" style="width: ${energyPct}%"></div>
+                    </div>
+                    <span class="stat-value">+${food.energyBonus}</span>
+                </div>
+            `;
+        }
+
+        statsHtml += '</div>';
+        return statsHtml;
     }
 
     setupDragEvents(slot, food) {

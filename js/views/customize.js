@@ -56,9 +56,9 @@ const CustomizeView = {
     },
 
     createPreviewPuff() {
-        // Use CSS dimensions, not canvas internal dimensions
-        const centerX = this.previewCanvas.clientWidth / 2;
-        const centerY = this.previewCanvas.clientHeight / 2;
+        // Use canvas internal dimensions for correct positioning
+        const centerX = this.previewCanvas.width / 2;
+        const centerY = this.previewCanvas.height / 2;
         const radius = 50; // Smaller radius for preview
 
         // Get initial color (vibrant pastel: 85% saturation, 78% lightness)
