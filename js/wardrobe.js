@@ -182,8 +182,9 @@ const WardrobeSystem = {
             energy: puffData.puffState.energy
         };
 
-        // Create preview puff
-        this.previewPuff = new SoftBody(centerX, centerY, radius, 16, puffData.baseColor, currentState);
+        // Create preview puff with MORE particles for better face detection
+        // Main puff uses 20, preview needs more for glasses to work
+        this.previewPuff = new SoftBody(centerX, centerY, radius, 20, puffData.baseColor, currentState);
 
         // Copy accessories from main puff
         if (puffData.accessoryRenderer) {
@@ -191,6 +192,20 @@ const WardrobeSystem = {
                 this.previewPuff.accessoryRenderer.addAccessory(acc);
             });
         }
+
+        // Override draw method to render accessories properly
+        const originalDraw = this.previewPuff.draw.bind(this.previewPuff);
+        this.previewPuff.draw = (ctx) => {
+            // Call original draw (includes body, face, etc.)
+            originalDraw(ctx);
+
+            // Manually render accessories on top
+            if (this.previewPuff.accessoryRenderer) {
+                this.previewPuff.accessoryRenderer.render(ctx, this.previewPuff);
+            }
+        };
+
+        console.log('[Wardrobe] Preview puff created with 20 particles (was 16)');
     },
 
     loadAccessories(category) {
@@ -447,9 +462,17 @@ const WardrobeSystem = {
 
         // Sync accessories
         this.previewPuff.accessoryRenderer.clearAccessories();
+
+        // DEBUG: Log main puff accessories
+        console.log('[Wardrobe] Main puff slots:', mainPuff.accessoryRenderer.slots);
+        console.log('[Wardrobe] Main puff accessories:', mainPuff.accessoryRenderer.accessories);
+
         mainPuff.accessoryRenderer.accessories.forEach(acc => {
+            console.log('[Wardrobe] Copying accessory:', acc);
             this.previewPuff.accessoryRenderer.addAccessory(acc);
         });
+
+        console.log('[Wardrobe] Preview puff slots after sync:', this.previewPuff.accessoryRenderer.slots);
     },
 
     syncMainPuff() {
