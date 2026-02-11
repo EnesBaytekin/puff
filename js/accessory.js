@@ -141,7 +141,7 @@ class AccessoryRenderer {
 
         // Calculate hat position from main circle center (stable position)
         const avgX = centerX;
-        const avgY = centerY - radius * 0.35; // Fixed position relative to center
+        const avgY = centerY - radius * 0.65; // Moved even higher
         const width = radius * 0.7;
 
         ctx.save();
@@ -211,7 +211,7 @@ class AccessoryRenderer {
 
         // Position on right-top side of head (like hair accessory)
         const avgX = centerX + radius * 0.4;
-        const avgY = centerY - radius * 0.3;
+        const avgY = centerY - radius * 0.6; // Moved even higher
         const ribbonSize = radius * 0.2;
 
         ctx.save();
@@ -293,7 +293,7 @@ class AccessoryRenderer {
         const centerY = softBody.mainCircle.y;
         const radius = softBody.radius;
 
-        const haloY = centerY - radius * 0.5;
+        const haloY = centerY - radius * 0.8; // Moved even higher
         const haloRadius = radius * 0.6;
 
         ctx.save();
@@ -317,7 +317,7 @@ class AccessoryRenderer {
 
         const crownWidth = radius * 0.5;
         const crownHeight = radius * 0.5;
-        const avgY = centerY - radius * 0.3;
+        const avgY = centerY - radius * 0.6; // Moved even higher
 
         ctx.save();
         ctx.fillStyle = accessory.color;
@@ -360,7 +360,7 @@ class AccessoryRenderer {
         const centerY = softBody.mainCircle.y;
         const radius = softBody.radius;
 
-        const avgY = centerY - radius * 0.3;
+        const avgY = centerY - radius * 0.6; // Moved even higher
         const hornWidth = radius * 0.15;
         const hornHeight = radius * 0.5;
 
@@ -393,7 +393,7 @@ class AccessoryRenderer {
         const radius = softBody.radius;
 
         const avgX = centerX;
-        const avgY = centerY - radius * 0.3;
+        const avgY = centerY - radius * 0.6; // Moved even higher
         const antennaHeight = radius * 0.6;
         const ballSize = radius * 0.12;
 
