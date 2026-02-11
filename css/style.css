@@ -950,3 +950,305 @@ body {
     background: var(--bg-color);
     border-color: rgba(255, 255, 255, 0.2);
 }
+
+/* ==============================
+   Wardrobe Panel
+   ============================== */
+
+.wardrobe-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--panel-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    width: 90%;
+    max-width: 420px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.wardrobe-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.wardrobe-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0;
+}
+
+.wardrobe-preview {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 15px;
+    background: var(--input-bg);
+    flex: 0 0 40%;
+    min-height: 0;
+}
+
+#wardrobe-canvas {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 8px;
+    background: var(--bg-color);
+}
+
+.wardrobe-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 10px 15px;
+    overflow-x: auto;
+    flex: 0 0 15%;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+}
+
+.wardrobe-tabs::-webkit-scrollbar {
+    height: 4px;
+}
+
+.wardrobe-tabs::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 2px;
+}
+
+.wardrobe-tab {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    border: 2px solid var(--border-color);
+    border-radius: 20px;
+    background: var(--button-bg);
+    color: var(--button-text);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.wardrobe-tab:hover {
+    border-color: var(--button-hover-bg);
+    background: var(--button-hover-bg);
+}
+
+.wardrobe-tab.active {
+    background: var(--button-hover-bg);
+    border-color: var(--button-active-bg);
+    color: var(--text-color);
+}
+
+.accessory-list {
+    display: flex;
+    gap: 10px;
+    padding: 10px 15px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex: 0 0 30%;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y pan-x;
+    scroll-snap-type: x mandatory;
+}
+
+.accessory-list::-webkit-scrollbar {
+    display: none;
+}
+
+.accessory-list {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Force content to be scrollable */
+.accessory-list > * {
+    flex-shrink: 0;
+}
+
+.accessory-item {
+    flex-shrink: 0;
+    width: 80px;
+    height: 80px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--food-slot-bg);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 8px;
+    position: relative;
+}
+
+.accessory-item:hover {
+    border-color: var(--button-hover-bg);
+    background: var(--food-slot-hover-bg);
+}
+
+.accessory-item.selected {
+    border-color: var(--button-hover-bg);
+    background: var(--button-hover-bg);
+    box-shadow: 0 0 0 3px rgba(255, 214, 204, 0.3);
+}
+
+.accessory-item.wearing::after {
+    content: '✓';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: var(--button-hover-bg);
+    color: var(--text-color);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.accessory-emoji {
+    font-size: 32px;
+}
+
+.accessory-name {
+    font-size: 10px;
+    color: var(--text-secondary);
+    text-align: center;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.wardrobe-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border-color);
+    flex: 0 0 15%;
+    min-height: 0;
+}
+
+.wardrobe-footer span {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-color);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wear-btn {
+    padding: 10px 24px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--button-bg);
+    color: var(--button-text);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.wear-btn:hover:not(:disabled) {
+    background: var(--button-hover-bg);
+    border-color: var(--button-hover-bg);
+}
+
+.wear-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.wear-btn.wearing {
+    background: var(--button-hover-bg);
+    border-color: var(--button-active-bg);
+    color: var(--text-color);
+}
+
+/* Mobile responsive for wardrobe */
+@media (max-width: 480px) {
+    .wardrobe-panel {
+        width: 95%;
+        max-height: 85vh;
+    }
+
+    .wardrobe-header h2 {
+        font-size: 16px;
+    }
+
+    .wardrobe-preview {
+        padding: 10px;
+    }
+
+    #wardrobe-canvas {
+        width: 180px;
+        height: 180px;
+    }
+
+    .wardrobe-tabs {
+        padding: 8px 12px;
+        flex: 0 0 14%;
+    }
+
+    .wardrobe-tab {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .accessory-list {
+        padding: 8px 12px;
+        gap: 8px;
+        flex: 0 0 31%;
+    }
+
+    .accessory-item {
+        width: 70px;
+        height: 70px;
+        padding: 6px;
+    }
+
+    .accessory-emoji {
+        font-size: 28px;
+    }
+
+    .accessory-name {
+        font-size: 9px;
+    }
+
+    .wardrobe-footer {
+        padding: 10px 15px;
+        flex: 0 0 14%;
+    }
+
+    .wardrobe-footer span {
+        font-size: 13px;
+    }
+
+    .wear-btn {
+        padding: 8px 20px;
+        font-size: 13px;
+    }
+}
+

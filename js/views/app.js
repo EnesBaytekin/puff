@@ -32,6 +32,11 @@ const AppView = {
 
         this.creature = new SoftBody(centerX, centerY, radius, 20, puffData.color, puffState);
 
+        // Load accessories from server data
+        if (puffData.accessories && typeof puffData.accessories === 'object') {
+            this.loadAccessories(puffData.accessories);
+        }
+
         // Initialize physics solver
         this.physicsSolver = new PhysicsSolver(
             0,      // gravity (disabled - using centering force instead)
@@ -99,6 +104,9 @@ const AppView = {
         // Initialize food drag handler (after status panel setup)
         this.foodDragHandler = new FoodDragHandler(this);
 
+        // Initialize wardrobe system
+        WardrobeSystem.init(this);
+
         // Start the game loop
         this.startLoop();
     },
@@ -131,9 +139,10 @@ const AppView = {
     },
 
     openStatusPanel() {
-        // Close food panel and settings panel first
+        // Close food panel, settings panel and wardrobe first
         this.closeFoodPanel();
         this.closeSettingsPanel();
+        this.closeWardrobePanel();
 
         const toggleBtn = document.getElementById('status-toggle-btn');
         const overlay = document.getElementById('status-overlay');
@@ -173,6 +182,12 @@ const AppView = {
         }
     },
 
+    closeWardrobePanel() {
+        if (WardrobeSystem) {
+            WardrobeSystem.closeWardrobe();
+        }
+    },
+
     setupMinigameUI() {
         const toggleBtn = document.getElementById('minigame-toggle-btn');
         const exitBtn = document.getElementById('minigame-exit-btn');
@@ -195,6 +210,7 @@ const AppView = {
         this.closeStatusPanel();
         this.closeFoodPanel();
         this.closeSettingsPanel();
+        this.closeWardrobePanel();
 
         // Sync creature with StateManager's current state first!
         // Create NEW object to avoid reference sharing
@@ -310,6 +326,33 @@ const AppView = {
         this.animationFrameId = requestAnimationFrame(update);
     },
 
+    loadAccessories(accessories) {
+        // Load accessories from server data
+        if (!this.creature || !this.creature.accessoryRenderer) return;
+
+        const renderer = this.creature.accessoryRenderer;
+
+        // Clear existing accessories
+        renderer.clearAccessories();
+
+        // Load each accessory from slots
+        for (const [slot, accessoryData] of Object.entries(accessories)) {
+            if (accessoryData && accessoryData.id && accessoryData.name && accessoryData.type) {
+                // Create Accessory object from server data
+                const accessory = new Accessory(
+                    accessoryData.id,
+                    accessoryData.name,
+                    accessoryData.type,
+                    accessoryData.color || '#ffffff'
+                );
+                accessory.enabled = accessoryData.enabled !== false;
+                renderer.addAccessory(accessory);
+            }
+        }
+
+        console.log('[App] Loaded accessories from server:', accessories);
+    },
+
     cleanup() {
         // Stop animation loop
         if (this.animationFrameId) {
@@ -328,22 +371,33 @@ const AppView = {
             this.stateManager = null;
         }
 
+        // Cleanup wardrobe system
+        if (WardrobeSystem) {
+            WardrobeSystem.cleanup();
+        }
+
         // Close panels
         const statusOverlay = document.getElementById('status-overlay');
         const foodOverlay = document.getElementById('food-overlay');
+        const wardrobeOverlay = document.getElementById('wardrobe-overlay');
         const statusPanel = document.getElementById('status-panel');
         const foodPanel = document.getElementById('food-panel');
+        const wardrobePanel = document.getElementById('wardrobe-panel');
         const statusToggleBtn = document.getElementById('status-toggle-btn');
         const foodToggleBtn = document.getElementById('food-toggle-btn');
+        const wardrobeToggleBtn = document.getElementById('wardrobe-toggle-btn');
         const minigameOverlay = document.getElementById('minigame-overlay');
         const minigameExitBtn = document.getElementById('minigame-exit-btn');
 
         if (statusOverlay) statusOverlay.classList.remove('active');
         if (foodOverlay) foodOverlay.classList.remove('active');
+        if (wardrobeOverlay) wardrobeOverlay.classList.remove('active');
         if (statusPanel) statusPanel.classList.remove('active');
         if (foodPanel) foodPanel.classList.remove('active');
+        if (wardrobePanel) wardrobePanel.classList.remove('active');
         if (statusToggleBtn) statusToggleBtn.classList.remove('active');
         if (foodToggleBtn) foodToggleBtn.classList.remove('active');
+        if (wardrobeToggleBtn) wardrobeToggleBtn.classList.remove('active');
         if (minigameOverlay) minigameOverlay.classList.remove('active');
         if (minigameExitBtn) minigameExitBtn.classList.remove('active');
 

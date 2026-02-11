@@ -19,6 +19,9 @@ class SoftBody {
             energy: puffState?.energy ?? 50   // 0 = exhausted (slow), 100 = full energy (fast)
         };
 
+        // Accessory renderer
+        this.accessoryRenderer = new AccessoryRenderer();
+
         // Eating animation state
         this.isEating = false;
         this.eatingTimer = 0;
@@ -381,6 +384,11 @@ class SoftBody {
 
         // Draw the face on top
         this.drawFace(ctx);
+
+        // Draw accessories on top of everything
+        if (this.accessoryRenderer) {
+            this.accessoryRenderer.render(ctx, this);
+        }
     }
 
     // Draw a single hand-drawn stroke with variation

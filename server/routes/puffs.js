@@ -161,4 +161,56 @@ router.put('/state', authenticateToken, async (req, res) => {
     }
 });
 
+// PUT /api/puffs/accessories - Update puff accessories
+router.put('/accessories', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { accessories } = req.body;
+
+        if (!accessories || typeof accessories !== 'object') {
+            return res.status(400).json({ error: 'Invalid accessories data' });
+        }
+
+        // Validate accessories structure
+        const validSlots = ['hat', 'glasses', 'head', 'face'];
+        const validAccessories = {};
+        for (const slot of validSlots) {
+            if (accessories[slot] !== null && accessories[slot] !== undefined) {
+                // Validate accessory structure
+                const acc = accessories[slot];
+                if (acc.id && acc.name && acc.type && acc.color) {
+                    validAccessories[slot] = {
+                        id: acc.id,
+                        name: acc.name,
+                        type: acc.type,
+                        color: acc.color,
+                        enabled: acc.enabled !== false
+                    };
+                } else {
+                    return res.status(400).json({ error: `Invalid accessory in slot: ${slot}` });
+                }
+            } else {
+                validAccessories[slot] = null;
+            }
+        }
+
+        const result = await pool.query(
+            `UPDATE puffs
+             SET accessories = $1, updated_at = CURRENT_TIMESTAMP
+             WHERE user_id = $2
+             RETURNING *`,
+            [JSON.stringify(validAccessories), userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Puff not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('Update accessories error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 module.exports = router;

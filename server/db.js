@@ -34,11 +34,25 @@ async function initDB() {
                 hunger INTEGER DEFAULT 50 CHECK (hunger >= 0 AND hunger <= 100),
                 mood INTEGER DEFAULT 50 CHECK (mood >= 0 AND mood <= 100),
                 energy INTEGER DEFAULT 50 CHECK (energy >= 0 AND energy <= 100),
+                accessories JSONB DEFAULT '{"hat":null,"glasses":null,"head":null,"face":null}',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
         console.log('Puffs table initialized');
+
+        // Add accessories column if it doesn't exist (for existing databases)
+        try {
+            await client.query(`
+                ALTER TABLE puffs ADD COLUMN IF NOT EXISTS accessories JSONB DEFAULT '{"hat":null,"glasses":null,"head":null,"face":null}'
+            `);
+            console.log('Accessories column added to puffs table (if not exists)');
+        } catch (err) {
+            // Column might already exist, ignore error
+            if (!err.message.includes('already exists')) {
+                console.error('Error adding accessories column:', err);
+            }
+        }
 
     } catch (err) {
         console.error('Database initialization error:', err);

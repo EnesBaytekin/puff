@@ -153,5 +153,19 @@ const API = {
         }
 
         return response.json();
+    },
+
+    async updatePuffAccessories(accessories) {
+        const response = await this.request('/api/puffs/accessories', {
+            method: 'PUT',
+            body: JSON.stringify({ accessories })
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to update accessories');
+        }
+
+        return response.json();
     }
 };
