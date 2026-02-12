@@ -212,18 +212,8 @@ const WardrobeSystem = {
         const list = document.getElementById('accessory-list');
         list.innerHTML = '';
 
-        // Filter accessories by category
-        let accessories = ACCESSORY_CATALOG;
-        if (category !== 'all') {
-            const categoryMap = {
-                'hat': ['hat'],
-                'glasses': ['glasses'],
-                'head': ['ribbon', 'bowtie', 'halo', 'crown', 'horns', 'antenna'],
-                'face': ['eyebrows', 'mustache']
-            };
-            const types = categoryMap[category] || [];
-            accessories = ACCESSORY_CATALOG.filter(a => types.includes(a.type));
-        }
+        // Get accessories from config
+        let accessories = AccessoryAssetLoader.getAccessoriesByCategory(category);
 
         // Create accessory items
         accessories.forEach(acc => {
@@ -236,11 +226,14 @@ const WardrobeSystem = {
                 item.classList.add('wearing');
             }
 
-            // Get emoji based on type
-            const emoji = this.getAccessoryEmoji(acc.type);
+            // Get thumbnail image
+            const img = AccessoryAssetLoader.getImage(acc.file);
+            const thumbnailHtml = img
+                ? `<img src="${img.src}" class="accessory-thumb" alt="${acc.name}">`
+                : `<span class="accessory-placeholder">✨</span>`;
 
             item.innerHTML = `
-                <span class="accessory-emoji">${emoji}</span>
+                ${thumbnailHtml}
                 <span class="accessory-name">${acc.name}</span>
             `;
 
@@ -252,21 +245,7 @@ const WardrobeSystem = {
         });
     },
 
-    getAccessoryEmoji(type) {
-        const emojiMap = {
-            'hat': '🎩',
-            'glasses': '🕶️',
-            'ribbon': '🎀',
-            'bowtie': '🎀',
-            'halo': '😇',
-            'crown': '👑',
-            'horns': '😈',
-            'antenna': '📡',
-            'eyebrows': '😠',
-            'mustache': '👨'
-        };
-        return emojiMap[type] || '✨';
-    },
+    // getAccessoryEmoji removed - now using image thumbnails
 
     selectAccessory(accessory, element) {
         // Update selected state
@@ -351,42 +330,12 @@ const WardrobeSystem = {
 
                 // Draw temp accessory on top if it's not already equipped
                 if (this.tempAccessory && !this.previewPuff.accessoryRenderer.hasAccessory(this.tempAccessory.id)) {
-                    const renderer = this.previewPuff.accessoryRenderer;
-                    const type = this.tempAccessory.type;
-
-                    // Call the appropriate draw method
-                    switch (type) {
-                        case 'hat':
-                            renderer.drawHat(this.ctx, this.previewPuff, this.tempAccessory);
-                            break;
-                        case 'glasses':
-                            renderer.drawGlasses(this.ctx, this.previewPuff, this.tempAccessory);
-                            break;
-                        case 'ribbon':
-                            renderer.drawRibbon(this.ctx, this.previewPuff, this.tempAccessory);
-                            break;
-                        case 'bowtie':
-                            renderer.drawBowtie(this.ctx, this.previewPuff, this.tempAccessory);
-                            break;
-                        case 'halo':
-                            renderer.drawHalo(this.ctx, this.previewPuff, this.tempAccessory);
-                            break;
-                        case 'crown':
-                            renderer.drawCrown(this.ctx, this.previewPuff, this.tempAccessory);
-                            break;
-                        case 'horns':
-                            renderer.drawHorns(this.ctx, this.previewPuff, this.tempAccessory);
-                            break;
-                        case 'antenna':
-                            renderer.drawAntenna(this.ctx, this.previewPuff, this.tempAccessory);
-                            break;
-                        case 'eyebrows':
-                            renderer.drawEyebrows(this.ctx, this.previewPuff, this.tempAccessory);
-                            break;
-                        case 'mustache':
-                            renderer.drawMustache(this.ctx, this.previewPuff, this.tempAccessory);
-                            break;
-                    }
+                    // Render the temp accessory using new image-based system
+                    this.previewPuff.accessoryRenderer.renderAccessory(
+                        this.ctx,
+                        this.previewPuff,
+                        this.tempAccessory
+                    );
                 }
 
                 // Restore the hidden accessory after drawing

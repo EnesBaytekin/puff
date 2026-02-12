@@ -1126,6 +1126,21 @@ body {
     font-size: 32px;
 }
 
+.accessory-thumb {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto 4px;
+}
+
+.accessory-placeholder {
+    font-size: 28px;
+    display: block;
+    text-align: center;
+    margin: 4px 0;
+}
+
 .accessory-name {
     font-size: 10px;
     color: var(--text-secondary);

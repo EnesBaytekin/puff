@@ -32,10 +32,19 @@ const AppView = {
 
         this.creature = new SoftBody(centerX, centerY, radius, 20, puffData.color, puffState);
 
-        // Load accessories from server data
-        if (puffData.accessories && typeof puffData.accessories === 'object') {
-            this.loadAccessories(puffData.accessories);
-        }
+        // Initialize accessory asset loader (load config and preload all images)
+        AccessoryAssetLoader.loadConfig().then(() => {
+            return AccessoryAssetLoader.preloadAll();
+        }).then(() => {
+            console.log('[App] Accessory assets loaded');
+
+            // Load accessories from server data
+            if (puffData.accessories && typeof puffData.accessories === 'object') {
+                this.loadAccessories(puffData.accessories);
+            }
+        }).catch(err => {
+            console.error('[App] Failed to load accessory assets:', err);
+        });
 
         // Initialize physics solver
         this.physicsSolver = new PhysicsSolver(
@@ -332,21 +341,40 @@ const AppView = {
 
         const renderer = this.creature.accessoryRenderer;
 
-        // Clear existing accessories
-        renderer.clearAccessories();
+        // IMPORTANT: Don't clear existing accessories directly!
+        // Server data contains user's saved accessories - we should preserve them
+        // Instead, we'll merge server accessories with user's current equipped items
 
-        // Load each accessory from slots
+        // Load each accessory from server data
         for (const [slot, accessoryData] of Object.entries(accessories)) {
-            if (accessoryData && accessoryData.id && accessoryData.name && accessoryData.type) {
-                // Create Accessory object from server data
-                const accessory = new Accessory(
-                    accessoryData.id,
-                    accessoryData.name,
-                    accessoryData.type,
-                    accessoryData.color || '#ffffff'
-                );
-                accessory.enabled = accessoryData.enabled !== false;
-                renderer.addAccessory(accessory);
+            if (accessoryData && accessoryData.id) {
+                // Get full accessory data from config
+                const configAccessory = AccessoryAssetLoader.getAccessory(accessoryData.id);
+
+                if (configAccessory) {
+                    // Use config data (new system)
+                    const accessory = {
+                        id: configAccessory.id,
+                        name: configAccessory.name,
+                        category: configAccessory.category,
+                        file: configAccessory.file,
+                        position: configAccessory.position,
+                        scale: configAccessory.scale,
+                        enabled: accessoryData.enabled !== false
+                    };
+                    renderer.addAccessory(accessory);
+                } else {
+                    // Fallback to legacy system if not found in config
+                    console.warn(`[App] Accessory ${accessoryData.id} not found in config, using legacy data`);
+                    const accessory = new Accessory(
+                        accessoryData.id,
+                        accessoryData.name || 'Unknown',
+                        accessoryData.type || 'head',
+                        accessoryData.color || '#ffffff'
+                    );
+                    accessory.enabled = accessoryData.enabled !== false;
+                    renderer.addAccessory(accessory);
+                }
             }
         }
 

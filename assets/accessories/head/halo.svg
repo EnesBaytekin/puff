@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 40" width="150" height="40">
+  <!-- Halo -->
+  <defs>
+    <linearGradient id="haloGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffeaa7;stop-opacity:0.8" />
+      <stop offset="50%" style="stop-color:#fdcb6e;stop-opacity:0.6" />
+      <stop offset="100%" style="stop-color:#f39c12;stop-opacity:0.3" />
+    </linearGradient>
+    <filter id="haloGlow">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="2" />
+    </filter>
+  </defs>
+
+  <!-- Back glow layer -->
+  <path d="M 10 20
+           A 65 8, 0 0, 1, 140 20"
+        stroke="#fdcb6e"
+        stroke-width="8"
+        fill="none"
+        opacity="0.2"
+        filter="url(#haloGlow)" />
+
+  <!-- Main halo ring - only back part (3/4 circle) -->
+  <path d="M 10 20
+           A 65 8, 0 0, 1, 140 20"
+        stroke="url(#haloGradient)"
+        stroke-width="4"
+        stroke-linecap="round"
+        fill="none" />
+
+  <!-- Inner highlight ring -->
+  <path d="M 15 20
+           A 60 6, 0 0, 1, 135 20"
+        stroke="#fff"
+        stroke-width="1"
+        stroke-linecap="round"
+        fill="none"
+        opacity="0.4" />
+
+  <!-- Sparkles -->
+  <circle cx="15" cy="18" r="1.5" fill="#fff" opacity="0.8" />
+  <circle cx="135" cy="18" r="1.5" fill="#fff" opacity="0.8" />
+  <circle cx="75" cy="10" r="1" fill="#fff" opacity="0.6" />
+</svg>

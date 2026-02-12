@@ -1,0 +1,62 @@
+{
+  "categories": [
+    {
+      "id": "hats",
+      "name": "Şapkalar",
+      "slot": "hat",
+      "zIndex": 10
+    },
+    {
+      "id": "glasses",
+      "name": "Gözlükler",
+      "slot": "glasses",
+      "zIndex": 20
+    },
+    {
+      "id": "head",
+      "name": "Baş Aksesuarları",
+      "slot": "head",
+      "zIndex": 30
+    },
+    {
+      "id": "face",
+      "name": "Yüz Aksesuarları",
+      "slot": "face",
+      "zIndex": 40
+    }
+  ],
+  "accessories": [
+    {
+      "id": "tophat",
+      "name": "Top Hat",
+      "category": "hats",
+      "file": "hats/tophat.svg",
+      "position": { "x": 0, "y": -70 },
+      "scale": 1.0
+    },
+    {
+      "id": "sunglasses",
+      "name": "Sunglasses",
+      "category": "glasses",
+      "file": "glasses/sunglasses.svg",
+      "position": { "x": 0, "y": -10 },
+      "scale": 1.0
+    },
+    {
+      "id": "halo",
+      "name": "Halo",
+      "category": "head",
+      "file": "head/halo.svg",
+      "position": { "x": 0, "y": -85 },
+      "scale": 1.0
+    },
+    {
+      "id": "mustache",
+      "name": "Fancy Mustache",
+      "category": "face",
+      "file": "face/mustache.svg",
+      "position": { "x": 0, "y": 15 },
+      "scale": 1.0
+    }
+  ]
+}
