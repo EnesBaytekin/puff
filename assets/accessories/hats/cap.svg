@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80">
+  <defs>
+    <linearGradient id="capBody" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3d5afe"/>
+      <stop offset="100%" stop-color="#2962ff"/>
+    </linearGradient>
+    <linearGradient id="capBrim" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2962ff"/>
+      <stop offset="100%" stop-color="#1e54b4"/>
+    </linearGradient>
+    <filter id="capShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="2" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#capShadow)">
+    <!-- Cap body (dome) -->
+    <ellipse cx="60" cy="45" rx="50" ry="35" fill="url(#capBody)"/>
+
+    <!-- Cap band -->
+    <ellipse cx="60" cy="45" rx="50" ry="10" fill="#1a237e" opacity="0.3"/>
+
+    <!-- Front brim (visor) -->
+    <path d="M 10 45 Q 5 50, 15 55 L 90 55 Q 95 52, 95 48 L 10 45"
+          fill="url(#capBrim)"/>
+
+    <!-- Button on top -->
+    <circle cx="60" cy="12" r="5" fill="#1a237e"/>
+
+    <!-- Highlight -->
+    <ellipse cx="60" cy="30" rx="20" ry="12" fill="#fff" opacity="0.15"/>
+  </g>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 25" width="80" height="25">
+  <defs>
+    <linearGradient id="browGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#424242"/>
+      <stop offset="50%" stop-color="#616161"/>
+      <stop offset="100%" stop-color="#424242"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Left eyebrow (angled) -->
+  <path d="M 5 18 Q 20 8, 35 15" stroke="url(#browGrad)" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+  <!-- Right eyebrow (angled) -->
+  <path d="M 45 15 Q 60 8, 75 18" stroke="url(#browGrad)" stroke-width="5" fill="none" stroke-linecap="round"/>
+</svg>

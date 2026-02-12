@@ -1,52 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 50" width="120" height="50">
-  <!-- Sunglasses -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 55" width="120" height="55">
   <defs>
-    <linearGradient id="lensGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#1a1a1a;stop-opacity:0.9" />
-      <stop offset="100%" style="stop-color:#0a0a0a;stop-opacity:0.95" />
+    <linearGradient id="lensDark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1a1a1a"/>
+      <stop offset="100%" stop-color="#0a0a0a"/>
     </linearGradient>
-    <linearGradient id="frameGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#4a4a4a;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#2a2a2a;stop-opacity:1" />
+    <linearGradient id="frameGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#424242"/>
+      <stop offset="100%" stop-color="#212121"/>
     </linearGradient>
+    <filter id="glassReflect" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-opacity="0.3"/>
+    </filter>
   </defs>
 
-  <!-- Left lens frame -->
-  <ellipse cx="28" cy="25" rx="22" ry="18"
-           fill="url(#lensGradient)"
-           stroke="url(#frameGradient)"
-           stroke-width="3" />
+  <g filter="url(#glassReflect)">
+    <!-- Left lens -->
+    <ellipse cx="28" cy="27" rx="25" ry="20" fill="url(#lensDark)" stroke="url(#frameGrad)" stroke-width="4"/>
 
-  <!-- Right lens frame -->
-  <ellipse cx="92" cy="25" rx="22" ry="18"
-           fill="url(#lensGradient)"
-           stroke="url(#frameGradient)"
-           stroke-width="3" />
+    <!-- Right lens -->
+    <ellipse cx="92" cy="27" rx="25" ry="20" fill="url(#lensDark)" stroke="url(#frameGrad)" stroke-width="4"/>
 
-  <!-- Bridge -->
-  <path d="M 50 25 Q 60 22, 70 25"
-        stroke="url(#frameGradient)"
-        stroke-width="4"
-        fill="none"
-        stroke-linecap="round" />
+    <!-- Bridge -->
+    <path d="M 53 27 Q 60 24, 67 27" stroke="url(#frameGrad)" stroke-width="4" fill="none" stroke-linecap="round"/>
 
-  <!-- Left temple (arm) -->
-  <path d="M 8 18 Q -2 15, -5 20"
-        stroke="url(#frameGradient)"
-        stroke-width="3"
-        fill="none"
-        stroke-linecap="round" />
+    <!-- Left temple -->
+    <path d="M 3 20 Q -5 18, -8 22" stroke="url(#frameGrad)" stroke-width="3" fill="none" stroke-linecap="round"/>
 
-  <!-- Right temple (arm) -->
-  <path d="M 112 18 Q 122 15, 125 20"
-        stroke="url(#frameGradient)"
-        stroke-width="3"
-        fill="none"
-        stroke-linecap="round" />
+    <!-- Right temple -->
+    <path d="M 117 20 Q 125 18, 128 22" stroke="url(#frameGrad)" stroke-width="3" fill="none" stroke-linecap="round"/>
 
-  <!-- Lens reflection - left -->
-  <ellipse cx="20" cy="20" rx="8" ry="5" fill="#ffffff" opacity="0.15" />
+    <!-- Lens reflection left -->
+    <ellipse cx="20" cy="22" rx="10" ry="6" fill="#fff" opacity="0.12"/>
 
-  <!-- Lens reflection - right -->
-  <ellipse cx="84" cy="20" rx="8" ry="5" fill="#ffffff" opacity="0.15" />
+    <!-- Lens reflection right -->
+    <ellipse cx="84" cy="22" rx="10" ry="6" fill="#fff" opacity="0.12"/>
+  </g>
 </svg>

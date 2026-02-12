@@ -4,43 +4,76 @@
       "id": "hats",
       "name": "Şapkalar",
       "slot": "hat",
-      "zIndex": 10
+      "zIndex": 10,
+      "description": "Puff'ının kafasına takılan şapkalar"
     },
     {
       "id": "glasses",
       "name": "Gözlükler",
       "slot": "glasses",
-      "zIndex": 20
+      "zIndex": 20,
+      "description": "Puff'ının gözüne takılan gözlükler"
     },
     {
       "id": "head",
       "name": "Baş Aksesuarları",
       "slot": "head",
-      "zIndex": 30
+      "zIndex": 30,
+      "description": "Kafada taşınan aksesuarlar"
     },
     {
       "id": "face",
       "name": "Yüz Aksesuarları",
       "slot": "face",
-      "zIndex": 40
+      "zIndex": 40,
+      "description": "Yüze eklenen aksesuarlar"
     }
   ],
   "accessories": [
     {
       "id": "tophat",
-      "name": "Top Hat",
+      "name": "Silindir Şapka",
       "category": "hats",
       "file": "hats/tophat.svg",
+      "position": { "x": 0, "y": -75 },
+      "scale": 0.9,
+      "zIndex": 10
+    },
+    {
+      "id": "cap",
+      "name": "Spor Şapka",
+      "category": "hats",
+      "file": "hats/cap.svg",
+      "position": { "x": 0, "y": -65 },
+      "scale": 0.85,
+      "zIndex": 10
+    },
+    {
+      "id": "crown",
+      "name": "Kral Tacı",
+      "category": "hats",
+      "file": "hats/crown.svg",
       "position": { "x": 0, "y": -70 },
-      "scale": 1.0
+      "scale": 0.8,
+      "zIndex": 10
     },
     {
       "id": "sunglasses",
-      "name": "Sunglasses",
+      "name": "Güneş Gözlüğü",
       "category": "glasses",
       "file": "glasses/sunglasses.svg",
       "position": { "x": 0, "y": -10 },
-      "scale": 1.0
+      "scale": 0.8,
+      "zIndex": 20
+    },
+    {
+      "id": "nerd",
+      "name": "Nerdel Gözlük",
+      "category": "glasses",
+      "file": "glasses/nerd.svg",
+      "position": { "x": 0, "y": -10 },
+      "scale": 0.8,
+      "zIndex": 20
     },
     {
       "id": "halo",
@@ -48,15 +81,35 @@
       "category": "head",
       "file": "head/halo.svg",
       "position": { "x": 0, "y": -85 },
-      "scale": 1.0
+      "scale": 1.0,
+      "zIndex": 30
+    },
+    {
+      "id": "antennae",
+      "name": "Biyiklı Anten",
+      "category": "head",
+      "file": "head/antennae.svg",
+      "position": { "x": 0, "y": -75 },
+      "scale": 0.7,
+      "zIndex": 30
     },
     {
       "id": "mustache",
-      "name": "Fancy Mustache",
+      "name": "Sakal Bıyık",
       "category": "face",
       "file": "face/mustache.svg",
       "position": { "x": 0, "y": 15 },
-      "scale": 1.0
+      "scale": 0.7,
+      "zIndex": 40
+    },
+    {
+      "id": "eyebrows",
+      "name": "Kaşlar",
+      "category": "face",
+      "file": "face/eyebrows.svg",
+      "position": { "x": 0, "y": -25 },
+      "scale": 0.8,
+      "zIndex": 40
     }
   ]
 }
