@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 60" width="40" height="60">
+  <defs>
+    <linearGradient id="tearGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#81d4fa"/>
+      <stop offset="100%" stop-color="#4fc3f7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Left tear -->
+  <path d="M 15 0
+           Q 10 20, 12 40
+           Q 15 50, 18 40
+           Q 20 20, 15 0 Z"
+        fill="url(#tearGrad)"
+        opacity="0.8"/>
+
+  <!-- Right tear -->
+  <path d="M 25 0
+           Q 20 20, 22 40
+           Q 25 50, 28 40
+           Q 30 20, 25 0 Z"
+        fill="url(#tearGrad)"
+        opacity="0.8"/>
+
+  <!-- Shine -->
+  <ellipse cx="14" cy="15" rx="2" ry="4" fill="#fff" opacity="0.5"/>
+  <ellipse cx="24" cy="15" rx="2" ry="4" fill="#fff" opacity="0.5"/>
+</svg>

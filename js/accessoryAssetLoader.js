@@ -63,6 +63,7 @@ const AccessoryAssetLoader = {
      */
     async loadSVG(fullPath, cacheKey) {
         try {
+            console.log(`[AccessoryAssetLoader] Loading SVG: ${cacheKey}`);
             const response = await fetch(fullPath);
             if (!response.ok) {
                 throw new Error(`Failed to load SVG: ${response.status}`);
@@ -80,7 +81,12 @@ const AccessoryAssetLoader = {
             const url = URL.createObjectURL(svgBlob);
 
             img.onload = () => {
+                console.log(`[AccessoryAssetLoader] SVG loaded successfully: ${cacheKey} (${img.width}x${img.height})`);
                 URL.revokeObjectURL(url);
+            };
+
+            img.onerror = () => {
+                console.error(`[AccessoryAssetLoader] Failed to create image from SVG: ${cacheKey}`);
             };
 
             img.src = url;
@@ -121,6 +127,15 @@ const AccessoryAssetLoader = {
         if (!this.config) {
             await this.loadConfig();
         }
+
+        // Check if accessories array exists
+        if (!this.config.accessories || !Array.isArray(this.config.accessories)) {
+            console.error('[AccessoryAssetLoader] No accessories found in config');
+            this.isLoaded = true; // Still mark as loaded to avoid infinite loops
+            return;
+        }
+
+        console.log(`[AccessoryAssetLoader] Preloading ${this.config.accessories.length} accessories...`);
 
         const loadPromises = this.config.accessories.map(acc =>
             this.loadImage(acc.file).catch(err => {

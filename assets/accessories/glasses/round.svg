@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50" width="100" height="50">
+  <defs>
+    <linearGradient id="roundFrame" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2e7d32"/>
+      <stop offset="100%" stop-color="#1b5e20"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Left lens -->
+  <circle cx="25" cy="25" r="22" fill="#1b5e20" stroke="url(#roundFrame)" stroke-width="4"/>
+  <circle cx="25" cy="25" r="16" fill="#4caf50" opacity="0.3"/>
+
+  <!-- Right lens -->
+  <circle cx="75" cy="25" r="22" fill="#1b5e20" stroke="url(#roundFrame)" stroke-width="4"/>
+  <circle cx="75" cy="25" r="16" fill="#4caf50" opacity="0.3"/>
+
+  <!-- Bridge -->
+  <path d="M 47 25 L 53 25" stroke="url(#roundFrame)" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Left temple -->
+  <path d="M 3 18 Q -5 12, -8 16" stroke="url(#roundFrame)" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- Right temple -->
+  <path d="M 97 18 Q 105 12, 108 16" stroke="url(#roundFrame)" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- Glare dots -->
+  <circle cx="18" cy="18" r="3" fill="#fff" opacity="0.4"/>
+  <circle cx="68" cy="18" r="3" fill="#fff" opacity="0.4"/>
+</svg>

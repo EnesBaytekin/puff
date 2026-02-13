@@ -98,9 +98,17 @@ class AccessoryRenderer {
      */
     render(ctx, softBody) {
         if (!AccessoryAssetLoader.isLoaded) {
-            console.warn('[AccessoryRenderer] Assets not loaded yet');
+            console.warn('[AccessoryRenderer] Assets not loaded yet, skipping render');
             return;
         }
+
+        // Get all equipped accessories
+        const equippedAccessories = this.accessories;
+        if (equippedAccessories.length === 0) {
+            return; // No accessories equipped
+        }
+
+        console.log(`[AccessoryRenderer] Rendering ${equippedAccessories.length} accessories`);
 
         // Get categories sorted by zIndex
         const categories = AccessoryAssetLoader.getCategories()
@@ -112,6 +120,7 @@ class AccessoryRenderer {
             const accessory = this.slots[slot];
             if (!accessory || !accessory.enabled) return;
 
+            console.log(`[AccessoryRenderer] Rendering accessory: ${accessory.id} in slot: ${slot}`);
             this.renderAccessory(ctx, softBody, accessory);
         });
     }
@@ -127,6 +136,12 @@ class AccessoryRenderer {
         const img = AccessoryAssetLoader.getImage(accessory.file);
         if (!img) {
             console.warn(`[AccessoryRenderer] Image not loaded: ${accessory.file}`);
+            return;
+        }
+
+        // Check if image is ready (has width/height)
+        if (img.width === 0 || img.height === 0) {
+            console.warn(`[AccessoryRenderer] Image not ready yet: ${accessory.file}`);
             return;
         }
 

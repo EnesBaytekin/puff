@@ -58,6 +58,24 @@
       "zIndex": 10
     },
     {
+      "id": "beanie",
+      "name": "Atkılı Şapka",
+      "category": "hats",
+      "file": "hats/beanie.svg",
+      "position": { "x": 0, "y": -60 },
+      "scale": 0.9,
+      "zIndex": 10
+    },
+    {
+      "id": "wizard",
+      "name": "Büyücü Şapkası",
+      "category": "hats",
+      "file": "hats/wizard.svg",
+      "position": { "x": 0, "y": -80 },
+      "scale": 0.75,
+      "zIndex": 10
+    },
+    {
       "id": "sunglasses",
       "name": "Güneş Gözlüğü",
       "category": "glasses",
@@ -76,6 +94,24 @@
       "zIndex": 20
     },
     {
+      "id": "heart",
+      "name": "Kalp Gözlüğü",
+      "category": "glasses",
+      "file": "glasses/heart.svg",
+      "position": { "x": 0, "y": -12 },
+      "scale": 0.7,
+      "zIndex": 20
+    },
+    {
+      "id": "round",
+      "name": "Yuvarlak Gözlük",
+      "category": "glasses",
+      "file": "glasses/round.svg",
+      "position": { "x": 0, "y": -10 },
+      "scale": 0.7,
+      "zIndex": 20
+    },
+    {
       "id": "halo",
       "name": "Halo",
       "category": "head",
@@ -86,11 +122,20 @@
     },
     {
       "id": "antennae",
-      "name": "Biyiklı Anten",
+      "name": "Biyıklı Anten",
       "category": "head",
       "file": "head/antennae.svg",
       "position": { "x": 0, "y": -75 },
       "scale": 0.7,
+      "zIndex": 30
+    },
+    {
+      "id": "horns",
+      "name": "Boynuzlar",
+      "category": "head",
+      "file": "head/horns.svg",
+      "position": { "x": 0, "y": -70 },
+      "scale": 0.75,
       "zIndex": 30
     },
     {
@@ -109,6 +154,24 @@
       "file": "face/eyebrows.svg",
       "position": { "x": 0, "y": -25 },
       "scale": 0.8,
+      "zIndex": 40
+    },
+    {
+      "id": "blush",
+      "name": "Kızarık",
+      "category": "face",
+      "file": "face/blush.svg",
+      "position": { "x": 0, "y": 5 },
+      "scale": 0.8,
+      "zIndex": 40
+    },
+    {
+      "id": "tears",
+      "name": "Gözyaşları",
+      "category": "face",
+      "file": "face/tears.svg",
+      "position": { "x": 0, "y": 10 },
+      "scale": 0.6,
       "zIndex": 40
     }
   ]

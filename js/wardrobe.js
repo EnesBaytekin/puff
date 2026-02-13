@@ -215,6 +215,12 @@ const WardrobeSystem = {
         // Get accessories from config
         let accessories = AccessoryAssetLoader.getAccessoriesByCategory(category);
 
+        // Check if assets are loaded
+        if (!AccessoryAssetLoader.isLoaded) {
+            list.innerHTML = '<div class="loading-message">Loading accessories...</div>';
+            return;
+        }
+
         // Create accessory items
         accessories.forEach(acc => {
             const item = document.createElement('div');
@@ -230,7 +236,7 @@ const WardrobeSystem = {
             const img = AccessoryAssetLoader.getImage(acc.file);
             const thumbnailHtml = img
                 ? `<img src="${img.src}" class="accessory-thumb" alt="${acc.name}">`
-                : `<span class="accessory-placeholder">✨</span>`;
+                : `<span class="accessory-placeholder">🎨</span>`;
 
             item.innerHTML = `
                 ${thumbnailHtml}

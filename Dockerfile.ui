@@ -24,6 +24,8 @@ COPY --from=builder /app /usr/share/nginx/html
 # Fix permissions for nginx to read files
 RUN chmod -R 644 /usr/share/nginx/html/js/*.js && \
     chmod -R 755 /usr/share/nginx/html/js && \
+    chmod -R 644 /usr/share/nginx/html/assets/ && \
+    find /usr/share/nginx/html/assets -type d -exec chmod 755 {} \; && \
     find /usr/share/nginx/html -type d -exec chmod 755 {} \;
 
 # Copy custom nginx config
