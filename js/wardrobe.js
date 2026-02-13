@@ -418,13 +418,32 @@ const WardrobeSystem = {
         // Sync accessories
         this.previewPuff.accessoryRenderer.clearAccessories();
 
-        // DEBUG: Log main puff accessories
         console.log('[Wardrobe] Main puff slots:', mainPuff.accessoryRenderer.slots);
-        console.log('[Wardrobe] Main puff accessories:', mainPuff.accessoryRenderer.accessories);
 
-        mainPuff.accessoryRenderer.accessories.forEach(acc => {
-            console.log('[Wardrobe] Copying accessory:', acc);
-            this.previewPuff.accessoryRenderer.addAccessory(acc);
+        // Sync each slot - create NEW objects from config
+        Object.entries(mainPuff.accessoryRenderer.slots).forEach(([slot, accessory]) => {
+            if (accessory) {
+                console.log(`[Wardrobe] Syncing to preview slot ${slot}:`, accessory);
+
+                // Get fresh config data to avoid reference issues
+                const configAccessory = AccessoryAssetLoader.getAccessory(accessory.id);
+                if (configAccessory) {
+                    // Create new accessory object with full data
+                    const newAccessory = {
+                        id: configAccessory.id,
+                        name: configAccessory.name,
+                        category: configAccessory.category,
+                        file: configAccessory.file,
+                        position: configAccessory.position,
+                        scale: configAccessory.scale,
+                        enabled: accessory.enabled !== false
+                    };
+                    this.previewPuff.accessoryRenderer.addAccessory(newAccessory);
+                    console.log(`[Wardrobe] Added to preview puff:`, newAccessory);
+                } else {
+                    console.warn(`[Wardrobe] Accessory ${accessory.id} not found in config`);
+                }
+            }
         });
 
         console.log('[Wardrobe] Preview puff slots after sync:', this.previewPuff.accessoryRenderer.slots);
@@ -435,10 +454,38 @@ const WardrobeSystem = {
         const mainPuff = this.appView.creature;
         if (!mainPuff || !this.previewPuff) return;
 
+        console.log('[Wardrobe] Syncing accessories from preview to main puff');
+        console.log('[Wardrobe] Preview puff slots:', this.previewPuff.accessoryRenderer.slots);
+
         mainPuff.accessoryRenderer.clearAccessories();
-        this.previewPuff.accessoryRenderer.accessories.forEach(acc => {
-            mainPuff.accessoryRenderer.addAccessory(acc);
+
+        // Sync each slot - create NEW objects from config
+        Object.entries(this.previewPuff.accessoryRenderer.slots).forEach(([slot, accessory]) => {
+            if (accessory) {
+                console.log(`[Wardrobe] Syncing slot ${slot}:`, accessory);
+
+                // Get fresh config data to avoid reference issues
+                const configAccessory = AccessoryAssetLoader.getAccessory(accessory.id);
+                if (configAccessory) {
+                    // Create new accessory object with full data
+                    const newAccessory = {
+                        id: configAccessory.id,
+                        name: configAccessory.name,
+                        category: configAccessory.category,
+                        file: configAccessory.file,
+                        position: configAccessory.position,
+                        scale: configAccessory.scale,
+                        enabled: accessory.enabled !== false
+                    };
+                    mainPuff.accessoryRenderer.addAccessory(newAccessory);
+                    console.log(`[Wardrobe] Added to main puff:`, newAccessory);
+                } else {
+                    console.warn(`[Wardrobe] Accessory ${accessory.id} not found in config`);
+                }
+            }
         });
+
+        console.log('[Wardrobe] Main puff slots after sync:', mainPuff.accessoryRenderer.slots);
 
         // Save accessories to server
         this.saveAccessoriesToServer();

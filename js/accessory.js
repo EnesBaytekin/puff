@@ -140,8 +140,9 @@ class AccessoryRenderer {
         }
 
         // Check if image is ready (has width/height)
-        if (img.width === 0 || img.height === 0) {
-            console.warn(`[AccessoryRenderer] Image not ready yet: ${accessory.file}`);
+        // Allow small values (like 1-2px) but reject zero
+        if (!img.width || !img.height || img.width < 1 || img.height < 1) {
+            console.warn(`[AccessoryRenderer] Image not ready yet: ${accessory.file} (${img.width}x${img.height})`);
             return;
         }
 
