@@ -93,25 +93,23 @@ jobs:
 
             ### 🚀 Quick Start
 
-            1. Download `docker-compose.yml` from the assets below
+            Download and run Puff in seconds with these commands:
 
-            2. Create a `.env` file in the same directory:
-            ```env
-            # Database Configuration
+            ```bash
+            wget https://github.com/EnesBaytekin/puff/releases/download/v${{ steps.version.outputs.version }}/docker-compose.yml
+
+            echo "# Database Configuration
             POSTGRES_DB=puff
             POSTGRES_USER=postgres
-            POSTGRES_PASSWORD=your_secure_password_here
+            POSTGRES_PASSWORD=$(head -c 32 /dev/urandom | base64)
 
             # JWT Secret (for authentication)
-            JWT_SECRET=your_jwt_secret_here
+            JWT_SECRET=$(head -c 32 /dev/urandom | base64)" > .env
+
+            docker compose up -d
             ```
 
-            3. Start the application:
-            ```bash
-            docker-compose up -d
-            ```
-
-            4. Open your browser to `http://localhost`
+            Then open `http://localhost` in your browser. That's it!
 
             ### 📦 What's Included
 
@@ -125,10 +123,6 @@ jobs:
             - **UI**: Port 80 (HTTP)
             - **Server**: Port 3000 (internal)
             - **Database**: Port 5432 (internal)
-
-            ### 📖 Documentation
-
-            For full documentation, visit: https://github.com/enesbaytekin/puff
 
             ---
             **Note**: This release uses version tags (`v${{ steps.version.outputs.version }}`) for all Docker images.
