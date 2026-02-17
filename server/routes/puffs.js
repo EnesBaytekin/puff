@@ -161,4 +161,36 @@ router.put('/state', authenticateToken, async (req, res) => {
     }
 });
 
+// PUT /api/puffs/color - Update puff color
+router.put('/color', authenticateToken, async (req, res) => {
+    try {
+        const { color } = req.body;
+        const userId = req.user.userId;
+
+        if (!color) {
+            return res.status(400).json({ error: 'Color is required' });
+        }
+
+        // Validate color format (hex)
+        if (!/^#[0-9A-Fa-f]{6}$/.test(color)) {
+            return res.status(400).json({ error: 'Invalid color format. Use hex format like #ffd6cc' });
+        }
+
+        // Update puff color
+        const result = await pool.query(
+            'UPDATE puffs SET color = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 RETURNING *',
+            [color, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Puff not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('Update puff color error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 module.exports = router;

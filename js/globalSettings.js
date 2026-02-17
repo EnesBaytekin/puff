@@ -10,8 +10,12 @@ const GlobalSettings = {
         this.setupOverlayClick();
         // Setup theme buttons
         this.setupThemeButtons();
+        // Setup tab navigation
+        this.setupTabNavigation();
         // Update active state
         this.updateThemeButtons();
+        // Setup password change form
+        this.setupPasswordChange();
     },
 
     setupSettingsButtons() {
@@ -52,6 +56,80 @@ const GlobalSettings = {
         });
     },
 
+    setupTabNavigation() {
+        const tabButtons = document.querySelectorAll('.tab-btn');
+
+        tabButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabName = btn.dataset.tab;
+                this.switchTab(tabName);
+            });
+        });
+    },
+
+    switchTab(tabName) {
+        // Update tab buttons
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        tabButtons.forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.tab === tabName) {
+                btn.classList.add('active');
+            }
+        });
+
+        // Update tab content
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabContents.forEach(content => {
+            content.classList.remove('active');
+            if (content.dataset.tab === tabName) {
+                content.classList.add('active');
+            }
+        });
+    },
+
+    setupPasswordChange() {
+        const form = document.getElementById('password-change-form');
+        if (!form) return;
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const currentPassword = document.getElementById('current-password').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const errorElement = document.getElementById('password-error');
+            const successElement = document.getElementById('password-success');
+
+            // Clear previous messages
+            errorElement.textContent = '';
+            successElement.textContent = '';
+
+            // Validation
+            if (newPassword.length < 6) {
+                errorElement.textContent = 'New password must be at least 6 characters';
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+                errorElement.textContent = 'New passwords do not match';
+                return;
+            }
+
+            if (currentPassword === newPassword) {
+                errorElement.textContent = 'New password must be different from current password';
+                return;
+            }
+
+            try {
+                await API.changePassword(currentPassword, newPassword);
+                successElement.textContent = 'Password changed successfully!';
+                form.reset();
+            } catch (error) {
+                errorElement.textContent = error.message || 'Failed to change password';
+            }
+        });
+    },
+
     openSettingsPanel() {
         // Close status and food panels first (only in app view)
         this.closeStatusPanel();
@@ -69,6 +147,25 @@ const GlobalSettings = {
 
         // Update active theme button
         this.updateThemeButtons();
+
+        // Check authentication and show/hide tabs accordingly
+        this.updateTabVisibility();
+
+        // Reset to theme tab
+        this.switchTab('theme');
+    },
+
+    updateTabVisibility() {
+        const isLoggedIn = !!API.getToken();
+        const passwordTab = document.getElementById('tab-password');
+
+        if (isLoggedIn) {
+            // Show password tab
+            if (passwordTab) passwordTab.style.display = 'flex';
+        } else {
+            // Hide password tab
+            if (passwordTab) passwordTab.style.display = 'none';
+        }
     },
 
     closeStatusPanel() {
@@ -101,6 +198,9 @@ const GlobalSettings = {
 
         overlay.classList.remove('active');
         panel.classList.remove('active');
+
+        // Reset to theme tab for next open
+        this.switchTab('theme');
     },
 
     setTheme(theme) {

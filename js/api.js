@@ -153,5 +153,33 @@ const API = {
         }
 
         return response.json();
+    },
+
+    async changePassword(currentPassword, newPassword) {
+        const response = await this.request('/api/auth/change-password', {
+            method: 'POST',
+            body: JSON.stringify({ currentPassword, newPassword })
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to change password');
+        }
+
+        return response.json();
+    },
+
+    async updatePuffColor(color) {
+        const response = await this.request('/api/puffs/color', {
+            method: 'PUT',
+            body: JSON.stringify({ color })
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to update puff color');
+        }
+
+        return response.json();
     }
 };

@@ -195,25 +195,56 @@
             <h2>Settings</h2>
             <button class="close-btn" data-target="settings">✕</button>
         </div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-navigation">
+            <button class="tab-btn active" data-tab="theme">
+                <span class="tab-icon">🎨</span>
+                <span class="tab-text">Theme</span>
+            </button>
+            <button class="tab-btn" data-tab="password" id="tab-password">
+                <span class="tab-icon">🔒</span>
+                <span class="tab-text">Password</span>
+            </button>
+        </div>
+
         <div class="panel-content">
-            <div class="setting-item">
-                <div class="setting-label">
-                    <span>🎨</span>
-                    <span>Theme</span>
+            <!-- Theme Tab -->
+            <div class="tab-content active" data-tab="theme">
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <span>🎨</span>
+                        <span>Theme</span>
+                    </div>
+                    <div class="theme-toggle-buttons">
+                        <button class="theme-btn" data-theme="light">
+                            <span class="theme-icon">☀️</span>
+                            <span class="theme-text">Light</span>
+                        </button>
+                        <button class="theme-btn" data-theme="dark">
+                            <span class="theme-icon">🌙</span>
+                            <span class="theme-text">Dark</span>
+                        </button>
+                        <button class="theme-btn" data-theme="auto">
+                            <span class="theme-icon">🔄</span>
+                            <span class="theme-text">Auto</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="theme-toggle-buttons">
-                    <button class="theme-btn" data-theme="light">
-                        <span class="theme-icon">☀️</span>
-                        <span class="theme-text">Light</span>
-                    </button>
-                    <button class="theme-btn" data-theme="dark">
-                        <span class="theme-icon">🌙</span>
-                        <span class="theme-text">Dark</span>
-                    </button>
-                    <button class="theme-btn" data-theme="auto">
-                        <span class="theme-icon">🔄</span>
-                        <span class="theme-text">Auto</span>
-                    </button>
+            </div>
+
+            <!-- Password Tab (requires login) -->
+            <div class="tab-content" data-tab="password">
+                <div class="setting-item">
+                    <p class="setting-description">Change your password</p>
+                    <form id="password-change-form" class="settings-form">
+                        <input type="password" id="current-password" placeholder="Current password" required autocomplete="current-password">
+                        <input type="password" id="new-password" placeholder="New password (min 6 characters)" required autocomplete="new-password">
+                        <input type="password" id="confirm-password" placeholder="Confirm new password" required autocomplete="new-password">
+                        <button type="submit">Change Password</button>
+                    </form>
+                    <p class="error-message" id="password-error"></p>
+                    <p class="success-message" id="password-success"></p>
                 </div>
             </div>
         </div>
