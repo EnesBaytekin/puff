@@ -15,6 +15,9 @@ const AppView = {
         // Clean up previous instance if exists
         this.cleanup();
 
+        // Display puff name
+        this.displayPuffName(puffData.name);
+
         // Initialize canvas
         this.canvas = new Canvas('canvas');
 
@@ -191,6 +194,9 @@ const AppView = {
     },
 
     startMinigame() {
+        // Hide puff name during minigame
+        this.hidePuffName();
+
         // Close all panels first
         this.closeStatusPanel();
         this.closeFoodPanel();
@@ -224,6 +230,9 @@ const AppView = {
     endMinigame() {
         if (this.minigameManager && this.minigameManager.isGameActive()) {
             this.minigameManager.endMinigame();
+
+            // Show puff name again after minigame
+            this.showPuffName();
 
             // Sync final state from creature to StateManager
             // Create NEW object to avoid reference sharing
@@ -259,6 +268,44 @@ const AppView = {
         if (hungerBar) hungerBar.style.width = hunger + '%';
         if (moodBar) moodBar.style.width = mood + '%';
         if (energyBar) energyBar.style.width = energy + '%';
+    },
+
+    displayPuffName(name) {
+        const nameElement = document.getElementById('puff-name-display');
+        if (!nameElement) return;
+
+        // Set the name
+        nameElement.textContent = name;
+
+        // Calculate font size based on name length
+        const nameLength = name.length;
+        let fontSize;
+
+        if (nameLength <= 5) {
+            fontSize = '2.5rem'; // Short names: large font
+        } else if (nameLength <= 10) {
+            fontSize = '2rem'; // Medium names: normal font
+        } else if (nameLength <= 15) {
+            fontSize = '1.5rem'; // Long names: smaller font
+        } else {
+            fontSize = '1.2rem'; // Very long names: smallest font
+        }
+
+        nameElement.style.fontSize = fontSize;
+    },
+
+    hidePuffName() {
+        const nameContainer = document.querySelector('.puff-name-container');
+        if (nameContainer) {
+            nameContainer.style.display = 'none';
+        }
+    },
+
+    showPuffName() {
+        const nameContainer = document.querySelector('.puff-name-container');
+        if (nameContainer) {
+            nameContainer.style.display = 'block';
+        }
     },
 
     startLoop() {

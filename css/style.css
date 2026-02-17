@@ -334,6 +334,25 @@ body {
    Main App View - Controls
    ============================== */
 
+/* Puff Name Display */
+.puff-name-container {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 999;
+    text-align: center;
+}
+
+.puff-name {
+    font-weight: 700;
+    color: var(--text-color);
+    margin: 0;
+    /* Font size will be set dynamically based on name length */
+    letter-spacing: -0.5px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
 /* Control Buttons */
 .control-btn {
     display: flex;
@@ -383,13 +402,14 @@ body {
     font-size: 14px;
 }
 
-/* Top Controls (Logout) */
+/* Top Controls (Logout, Settings) */
 .top-controls {
     position: fixed;
     top: 20px;
     right: 20px;
     z-index: 999; /* Above canvas (998) */
     display: flex;
+    flex-direction: column;
     gap: 10px;
 }
 
@@ -797,6 +817,15 @@ body {
    ============================== */
 
 @media (max-width: 480px) {
+    .puff-name-container {
+        top: 15px;
+        max-width: calc(100vw - 120px);
+    }
+
+    .puff-name {
+        word-break: break-word;
+    }
+
     .bottom-controls {
         left: 10px;
         bottom: 10px;

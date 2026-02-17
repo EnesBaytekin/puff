@@ -85,18 +85,23 @@
 
     <!-- Main App View -->
     <div id="view-app" class="view" style="display: none;">
+        <!-- Puff Name Display -->
+        <div class="puff-name-container">
+            <h1 id="puff-name-display" class="puff-name"></h1>
+        </div>
+
         <canvas id="canvas"></canvas>
 
         <!-- Top Right Controls -->
         <div class="top-controls">
-            <button id="settings-toggle-btn" class="control-btn menu-btn">
-                <span class="btn-icon">⚙️</span>
-                <span class="btn-text">Settings</span>
-            </button>
-
             <button id="logout-btn" class="control-btn">
                 <span class="btn-icon">🚪</span>
                 <span class="btn-text">Logout</span>
+            </button>
+
+            <button id="settings-toggle-btn" class="control-btn menu-btn">
+                <span class="btn-icon">⚙️</span>
+                <span class="btn-text">Settings</span>
             </button>
         </div>
 
