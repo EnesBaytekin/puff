@@ -1,6 +1,16 @@
 // Global Settings Handler - Works on all pages
 
 const GlobalSettings = {
+    // Color preview properties
+    colorPreview: {
+        currentHue: 10,
+        previewCanvas: null,
+        previewCtx: null,
+        previewPuff: null,
+        animationFrame: null,
+        isActive: false
+    },
+
     init() {
         // Setup all settings buttons
         this.setupSettingsButtons();
@@ -16,6 +26,8 @@ const GlobalSettings = {
         this.updateThemeButtons();
         // Setup password change form
         this.setupPasswordChange();
+        // Setup color preview
+        this.setupColorPreview();
     },
 
     setupSettingsButtons() {
@@ -68,6 +80,11 @@ const GlobalSettings = {
     },
 
     switchTab(tabName) {
+        // Stop color preview when switching away from color tab
+        if (tabName !== 'color') {
+            this.stopColorPreviewAnimation();
+        }
+
         // Update tab buttons
         const tabButtons = document.querySelectorAll('.tab-btn');
         tabButtons.forEach(btn => {
@@ -85,6 +102,11 @@ const GlobalSettings = {
                 content.classList.add('active');
             }
         });
+
+        // Start color preview when switching to color tab
+        if (tabName === 'color') {
+            this.startColorPreviewAnimation();
+        }
     },
 
     setupPasswordChange() {
@@ -158,13 +180,16 @@ const GlobalSettings = {
     updateTabVisibility() {
         const isLoggedIn = !!API.getToken();
         const passwordTab = document.getElementById('tab-password');
+        const colorTab = document.getElementById('tab-color');
 
         if (isLoggedIn) {
-            // Show password tab
+            // Show password and color tabs
             if (passwordTab) passwordTab.style.display = 'flex';
+            if (colorTab) colorTab.style.display = 'flex';
         } else {
-            // Hide password tab
+            // Hide password and color tabs
             if (passwordTab) passwordTab.style.display = 'none';
+            if (colorTab) colorTab.style.display = 'none';
         }
     },
 
@@ -198,6 +223,9 @@ const GlobalSettings = {
 
         overlay.classList.remove('active');
         panel.classList.remove('active');
+
+        // Stop color preview animation
+        this.stopColorPreviewAnimation();
 
         // Reset to theme tab for next open
         this.switchTab('theme');
@@ -235,5 +263,179 @@ const GlobalSettings = {
                 btn.classList.add('active');
             }
         });
+    },
+
+    // ===== Color Preview Setup =====
+    setupColorPreview() {
+        const hueSlider = document.getElementById('settings-puff-hue');
+        const saveBtn = document.getElementById('save-color-btn');
+        const canvas = document.getElementById('settings-puff-preview-canvas');
+
+        if (!hueSlider || !saveBtn || !canvas) return;
+
+        // Setup canvas
+        this.colorPreview.previewCanvas = canvas;
+        this.colorPreview.previewCtx = canvas.getContext('2d');
+
+        // Get current puff color hue from existing puff
+        this.loadCurrentPuffColor();
+
+        // Setup slider
+        hueSlider.oninput = () => {
+            this.colorPreview.currentHue = parseInt(hueSlider.value);
+            this.updatePreviewPuffColor();
+        };
+
+        // Setup save button
+        saveBtn.onclick = () => {
+            this.savePuffColor();
+        };
+    },
+
+    loadCurrentPuffColor() {
+        const hueSlider = document.getElementById('settings-puff-hue');
+
+        // Try to get current puff color from AppView
+        if (window.AppView && window.AppView.creature) {
+            const currentColor = window.AppView.creature.baseColor;
+            // Convert hex to HSL to get hue
+            const hue = this.hexToHue(currentColor);
+            if (hueSlider && hue !== null) {
+                this.colorPreview.currentHue = hue;
+                hueSlider.value = hue;
+            }
+        }
+    },
+
+    hexToHue(hex) {
+        // Convert hex to RGB
+        let r = parseInt(hex.slice(1, 3), 16) / 255;
+        let g = parseInt(hex.slice(3, 5), 16) / 255;
+        let b = parseInt(hex.slice(5, 7), 16) / 255;
+
+        const max = Math.max(r, g, b);
+        const min = Math.min(r, g, b);
+        let h = 0;
+
+        if (max !== min) {
+            const d = max - min;
+            switch (max) {
+                case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                case g: h = ((b - r) / d + 2) / 6; break;
+                case b: h = ((r - g) / d + 4) / 6; break;
+            }
+        }
+
+        return Math.round(h * 360);
+    },
+
+    startColorPreviewAnimation() {
+        if (this.colorPreview.isActive) return;
+
+        this.colorPreview.isActive = true;
+        const canvas = this.colorPreview.previewCanvas;
+        const ctx = this.colorPreview.previewCtx;
+
+        if (!canvas || !ctx) return;
+
+        // Create preview puff
+        this.createPreviewPuff();
+
+        const animate = () => {
+            if (!this.colorPreview.isActive) return;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Update and draw preview puff
+            if (this.colorPreview.previewPuff) {
+                this.colorPreview.previewPuff.applyOrganicDeformation();
+                this.colorPreview.previewPuff.draw(ctx);
+            }
+
+            this.colorPreview.animationFrame = requestAnimationFrame(animate);
+        };
+
+        animate();
+    },
+
+    stopColorPreviewAnimation() {
+        this.colorPreview.isActive = false;
+        if (this.colorPreview.animationFrame) {
+            cancelAnimationFrame(this.colorPreview.animationFrame);
+            this.colorPreview.animationFrame = null;
+        }
+        this.colorPreview.previewPuff = null;
+    },
+
+    createPreviewPuff() {
+        const canvas = this.colorPreview.previewCanvas;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radius = 50; // Smaller radius for preview
+
+        const color = this.hslToHex(this.colorPreview.currentHue, 85, 78);
+
+        // Create a softbody puff with neutral state
+        this.colorPreview.previewPuff = new SoftBody(centerX, centerY, radius, 12, color, {
+            hunger: 100,
+            mood: 0,
+            energy: 100
+        });
+
+        this.updatePreviewPuffColor();
+    },
+
+    updatePreviewPuffColor() {
+        if (!this.colorPreview.previewPuff) return;
+
+        const color = this.hslToHex(this.colorPreview.currentHue, 85, 78);
+        this.colorPreview.previewPuff.baseColor = color;
+        this.colorPreview.previewPuff.color = color;
+    },
+
+    async savePuffColor() {
+        const color = this.hslToHex(this.colorPreview.currentHue, 85, 78);
+        const errorElement = document.getElementById('color-error');
+        const successElement = document.getElementById('color-success');
+
+        // Clear previous messages
+        if (errorElement) errorElement.textContent = '';
+        if (successElement) successElement.textContent = '';
+
+        try {
+            await API.updatePuffColor(color);
+
+            // Update main puff color
+            if (window.AppView && window.AppView.creature) {
+                window.AppView.creature.baseColor = color;
+                window.AppView.creature.color = color;
+            }
+
+            if (successElement) {
+                successElement.textContent = 'Color updated successfully!';
+            }
+
+            // Clear success message after 3 seconds
+            setTimeout(() => {
+                if (successElement) successElement.textContent = '';
+            }, 3000);
+
+        } catch (error) {
+            if (errorElement) {
+                errorElement.textContent = error.message || 'Failed to update color';
+            }
+        }
+    },
+
+    hslToHex(h, s, l) {
+        l /= 100;
+        const a = s * Math.min(l, 1 - l) / 100;
+        const f = n => {
+            const k = (n + h / 30) % 12;
+            const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+            return Math.round(255 * color).toString(16).padStart(2, '0');
+        };
+        return `#${f(0)}${f(8)}${f(4)}`;
     }
 };

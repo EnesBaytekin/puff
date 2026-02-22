@@ -839,6 +839,40 @@ body {
     margin-bottom: 0;
 }
 
+/* Color Tab - Normal Layout */
+.tab-content[data-tab="color"] .setting-item {
+    margin-bottom: 0;
+}
+
+/* Settings Color Picker Container */
+.settings-color-picker {
+    margin: 16px 0;
+}
+
+/* Save Color Button */
+.save-color-btn {
+    width: 100%;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+    border: none;
+    border-radius: 8px;
+    color: #2d2d2d;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    margin-top: 12px;
+}
+
+.save-color-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 154, 158, 0.4);
+}
+
+.save-color-btn:active {
+    transform: translateY(0);
+}
+
 .setting-item {
     margin-bottom: 20px;
 }

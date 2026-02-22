@@ -202,6 +202,10 @@
                 <span class="tab-icon">🎨</span>
                 <span class="tab-text">Theme</span>
             </button>
+            <button class="tab-btn" data-tab="color" id="tab-color">
+                <span class="tab-icon">🌈</span>
+                <span class="tab-text">Color</span>
+            </button>
             <button class="tab-btn" data-tab="password" id="tab-password">
                 <span class="tab-icon">🔒</span>
                 <span class="tab-text">Password</span>
@@ -245,6 +249,21 @@
                     </form>
                     <p class="error-message" id="password-error"></p>
                     <p class="success-message" id="password-success"></p>
+                </div>
+            </div>
+
+            <!-- Color Tab (requires login) -->
+            <div class="tab-content" data-tab="color">
+                <div class="setting-item">
+                    <p class="setting-description">Change your puff's color</p>
+                    <div class="color-picker-container settings-color-picker">
+                        <label for="settings-puff-hue">Choose color tone:</label>
+                        <input type="range" id="settings-puff-hue" min="0" max="360" value="10" class="hue-slider">
+                        <canvas id="settings-puff-preview-canvas" width="120" height="120" class="puff-preview-canvas"></canvas>
+                    </div>
+                    <button id="save-color-btn" class="save-color-btn">Save Color</button>
+                    <p class="error-message" id="color-error"></p>
+                    <p class="success-message" id="color-success"></p>
                 </div>
             </div>
         </div>
