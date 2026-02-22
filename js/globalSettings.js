@@ -395,7 +395,7 @@ const GlobalSettings = {
     },
 
     async savePuffColor() {
-        const color = this.hslToHex(this.colorPreview.currentHue, 85, 78);
+        const newColor = this.hslToHex(this.colorPreview.currentHue, 85, 78);
         const errorElement = document.getElementById('color-error');
         const successElement = document.getElementById('color-success');
 
@@ -404,12 +404,27 @@ const GlobalSettings = {
         if (successElement) successElement.textContent = '';
 
         try {
-            await API.updatePuffColor(color);
+            await API.updatePuffColor(newColor);
 
-            // Update main puff color
-            if (window.AppView && window.AppView.creature) {
-                window.AppView.creature.baseColor = color;
-                window.AppView.creature.color = color;
+            // Fetch updated puff data and reinitialize app view
+            const updatedPuff = await API.getMyPuff();
+
+            console.log('=== COLOR SAVE DEBUG ===');
+            console.log('New color (HSL):', newColor);
+            console.log('Puff from server:', updatedPuff);
+            console.log('Puff color from server:', updatedPuff.color);
+            console.log('window.AppView exists?', !!window.AppView);
+            console.log('window.AppView.init is function?', typeof window.AppView?.init);
+
+            if (window.AppView && typeof window.AppView.init === 'function') {
+                console.log('About to call AppView.init()');
+                console.log('Old creature color before init:', window.AppView.creature?.baseColor);
+                // Clean up old instance and reinitialize with new data
+                window.AppView.init(updatedPuff);
+                console.log('AppView.init() returned');
+                console.log('New creature color after init:', window.AppView.creature?.baseColor);
+            } else {
+                console.error('AppView or AppView.init not available!');
             }
 
             if (successElement) {
