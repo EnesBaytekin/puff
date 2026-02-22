@@ -372,7 +372,7 @@ const GlobalSettings = {
         const canvas = this.colorPreview.previewCanvas;
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
-        const radius = 50; // Smaller radius for preview
+        const radius = 40; // Smaller radius for settings preview (100x100 canvas)
 
         const color = this.hslToHex(this.colorPreview.currentHue, 85, 78);
 
