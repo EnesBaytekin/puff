@@ -35,15 +35,16 @@ Tarayıcıda çalışan, mobil uyumlu, tek kişilik bir **virtual pet / dijital 
 - **Özellikler**:
   - Kayıt olma (`POST /api/auth/register`)
   - Giriş yapma (`POST /api/auth/login`)
+  - Şifre değiştirme (`POST /api/auth/change-password`)
+  - Username-based authentication (email yok)
   - JWT tabanlı kimlik doğrulama
   - bcryptjs ile şifre hashleme
-  - Otomatik token yenileme
 
 ### 3. Veritabanı (PostgreSQL) ✅
 - **Konumu**: `server/db.js`
-- **Database Name**: `puff` (eskiden `digitoy`)
+- **Database Name**: `puff`
 - **Tablolar**:
-  - `users` (id, email, password_hash, created_at)
+  - `users` (id, username, password_hash, created_at)
   - `puffs` (id, user_id, name, color, hunger, mood, energy, created_at, updated_at)
 - **Özellikler**:
   - User-Puff ilişkisi (foreign key)
@@ -56,14 +57,15 @@ Tarayıcıda çalışan, mobil uyumlu, tek kişilik bir **virtual pet / dijital 
   - `POST /api/puffs/create` - Pet oluştur (isim + renk)
   - `GET /api/puffs/mine` - Kullanıcının petini getir (offline decay ile)
   - `PUT /api/puffs/state` - Pet state güncelle
+  - `PUT /api/puffs/color` - Pet rengini güncelle
 - **Özellikler**:
   - Her kullanıcı bir pet olabilir
-  - İsim ve renk özelleştirme
+  - İsim ve renk özelleştirme (sadece oluştururken)
   - Kalıcı veri saklama
   - **Offline Decay Calculation**: Kullanıcı online değilken bile state'ler azalır
 
 ### 5. State Sistemi (Hunger, Mood, Energy) ✅
-- **Konumu**: `js/stateManager.js` (yeni dosya)
+- **Konumu**: `js/stateManager.js`
 - **Özellikler**:
   - **3 State**: Fullness (Hunger), Mood, Energy
   - **Client-side Decay Loop**: Her 30 saniyede azalma
@@ -82,7 +84,7 @@ Tarayıcıda çalışan, mobil uyumlu, tek kişilik bir **virtual pet / dijital 
 - 2 fullness → 1 energy per minute
 
 ### 6. Yemek Sistemi ✅
-- **Konumu**: `js/food.js` (yeni dosya)
+- **Konumu**: `js/food.js`
 - **Özellikler**:
   - **12 Yiyecek**: Apple, Cake, Fish, Cookie, Ice Cream, Donut, Pizza, Sandwich, Burger, Carrot, Banana, Chicken
   - **Drag & Drop**: Mouse ve touch ile sürükle-bırak
@@ -113,14 +115,16 @@ Tarayıcıda çalışan, mobil uyumlu, tek kişilik bir **virtual pet / dijital 
   - **Panel Toggle**: Tek panel açık, diğerini otomatik kapatır
   - **Food Panel**: Grid layout, 4 columns
   - **Z-index Fix**: Panel z-index 101, butonların üstünde
+  - **Puff Name Display**: Ana ekranın en üstünde, dynamic font size
+  - **Button Layout**: Logout (üst), Settings (alt)
 
 ### 8. Frontend ve UI ✅
 - **Konumu**: `js/views/` klasörü
 - **Sayfalar**:
   - `login.js` - Giriş sayfası
   - `register.js` - Kayıt sayfası
-  - `customize.js` - Pet özelleştirme
-  - `app.js` - Ana uygulama (progress bars, panels)
+  - `customize.js` - Pet özelleştirme (sadece oluştururken)
+  - `app.js` - Ana uygulama (progress bars, panels, puff name)
 
 - **Tasarım**:
   - Pastel renk paleti
@@ -146,39 +150,64 @@ Tarayıcıda çalışan, mobil uyumlu, tek kişilik bir **virtual pet / dijital 
 - Release notes'ta sample .env içeriği
 - Automatic Docker Hub push
 
+### 10. Theme System ✅
+- **Konumu**: `js/themeManager.js`, `js/globalSettings.js`
+- **Özellikler**:
+  - Light/Dark/Auto theme desteği
+  - CSS custom properties ile renk yönetimi
+  - System preference detection
+  - Global settings (tüm sayfalarda)
+
+### 11. Settings System ✅ (YENİ - TAB BASED)
+- **Konumu**: `js/globalSettings.js`
+- **Özellikler**:
+  - **Tab-Based Interface**: Theme ve Password tab'ları
+  - **Theme Tab**: Light/Dark/Auto mod seçimi
+  - **Password Tab**: Şifre değiştirme
+  - **Auth-Aware**: Login olmamış kullanıcılar sadece Theme tab'ını görür
+  - **Global**: Tüm sayfalarda erişilebilir
+
+### 12. Puff Name Display ✅ (YENİ)
+- **Konumu**: `js/views/app.js`
+- **Özellikler**:
+  - Ana ekranın en üstünde puff ismi gösterimi
+  - Dynamic font size (isim uzunluğuna göre)
+  - Minigame sırasında gizleniyor
+  - Mobil uyumlu
+
+### 13. Minigame System ✅
+- **Konumu**: `js/minigame/` dizini
+- **Özellikler**:
+  - Drift & Catch minigame
+  - Energy → Mood conversion
+  - Extensible architecture
+  - Hitbox collision detection
+  - Particle effects
+
 ---
 
 ## ❌ EKSİK ÖZELLİKLER
 
-### 1. Mini Oyunlar ❌
-- **Prompt'ta**: "Mini games (low priority)"
-- **Durum**: Hiç başlanmamış
-- **Planlanan**:
-  - 30-60 saniyelik oyunlar
-  - Skor yok
-  - Sadece mutluluk etkiler
-  - Mood artırmak için
-
-### 2. Resting Mekanizması ❌
+### 1. Resting Mekanizması ❌
 - **Durum**: Yok
 - **Gereksinimler**:
   - Energy artırmak için mekanizma
   - Sleep/rest state'i
   - Animasyon
 
-### 3. İlerici Fiziksel Efektler ❌
+### 2. İlerici Fiziksel Efektler ❌
 - **Prompt'ta**: "Hızlı sallarsan farklı tepki, yavaş okşarsan farklı tepki"
 - **Durum**: Sürükleme mevcut ama hız/ölçek tepkileri belirgin değil
 - **Geliştirme**: Farklı hızlarda farklı animasyonlar
 
-### 4. Ses Efektleri ❌
+### 3. Ses Efektleri ❌
 - **Durum**: Yok (opsiyonel olarak belirtilmişti)
 
-### 5. Çoklu Pet Desteği ❌
+### 4. Çoklu Pet Desteği ❌
 - **Durum**: Şu an sadece bir pet per user
 - **Geliştirme**: Birden fazla pet oluşturulabilir, aralarında geçiş yapılabilir
 
-### 6. Animasyon Çeşitliliği ⚠️
+### 5. Animasyon Çeşitliliği ⚠️
 - **Mevcut**: Eating animation (chewing)
 - **Eksik**: Sleeping animation, playing animation, farklı eating varyasyonları
 
@@ -196,6 +225,13 @@ Tarayıcıda çalışan, mobil uyumlu, tek kişilik bir **virtual pet / dijital 
 │   │   ├── constraint.js
 │   │   ├── solver.js
 │   │   └── softbody.js
+│   ├── minigame/                 # Minigame sistemi ✅
+│   │   ├── minigame.js
+│   │   ├── minigameManager.js
+│   │   ├── driftGame.js
+│   │   ├── driftSolver.js
+│   │   ├── targetCircle.js
+│   │   └── particleEffect.js
 │   ├── views/                    # Sayfa kontrolleri ✅
 │   │   ├── login.js
 │   │   ├── register.js
@@ -205,8 +241,10 @@ Tarayıcıda çalışan, mobil uyumlu, tek kişilik bir **virtual pet / dijital 
 │   ├── canvas.js                 # Canvas setup ✅
 │   ├── input.js                  # Input handling ✅
 │   ├── router.js                 # SPA router ✅
-│   ├── stateManager.js           # NEW: State sync, decay ✅
-│   └── food.js                   # NEW: Food system ✅
+│   ├── stateManager.js           # State sync, decay ✅
+│   ├── food.js                   # Food system ✅
+│   ├── themeManager.js           # Theme management ✅
+│   └── globalSettings.js         # Global settings ✅
 ├── server/                       # Backend ✅
 │   ├── middleware/
 │   │   └── auth.js               # JWT middleware ✅
@@ -253,9 +291,13 @@ Tarayıcıda çalışan, mobil uyumlu, tek kişilik bir **virtual pet / dijital 
 - [x] State göstergeleri (progress bars)
 - [x] Food effects (sugar crash, protein boost)
 - [x] Offline support (LocalStorage + sync)
+- [x] Theme system (Light/Dark/Auto)
+- [x] Settings system (Tab-based)
+- [x] Puff name display
+- [x] Password change
+- [x] Minigame system
 
 ### Priority 4 - İleriye Dönük ❌
-- [ ] Mini oyunlar (mood artırmak için)
 - [ ] Resting mechanism (energy artırmak için)
 - [ ] Ses efektleri
 - [ ] Çoklu pet desteği
@@ -278,6 +320,7 @@ Tarayıcıda çalışan, mobil uyumlu, tek kişilik bir **virtual pet / dijital 
 - Token storage: localStorage
 - Middleware: `server/middleware/auth.js`
 - User ID extraction: JWT payload'dan
+- **Username-based**: Email yok, username ile login
 
 ### Physics
 - Custom implementation (Matter.js kullanılmadı)
@@ -306,16 +349,26 @@ Tarayıcıda çalışan, mobil uyumlu, tek kişilik bir **virtual pet / dijital 
 
 ## 📝 SON GÜNCELLEMELER
 
-### v1.0.4 (2026-02-05)
-- ✅ State management system tamamlandı
-- ✅ Food system (12 yiyecek) tamamlandı
-- ✅ Decay system (offline + online) tamamlandı
-- ✅ UI improvements (progress bars, panels) tamamlandı
-- ✅ Release system (version tags) tamamlandı
-- ✅ Database rename (digitoy → puff) tamamlandı
-- ✅ Sample .env in release notes eklendi
+### v1.1.2 (2026-02-22) - YENİ
+- ✅ Puff name display (ana ekran, dynamic font size)
+- ✅ Settings button layout (Logout üst, Settings alt)
+- ✅ Tab-based settings system (Theme + Password)
+- ✅ Password change (current password verification)
+- ✅ Color tab removed (sadece customize ekranında)
+
+### v1.1.1 (2026-02-09)
+- ✅ Username-based auth (email kaldırıldı)
+- ✅ Login/Register UI redesign (mascot emoji'ler, gradient butonlar)
+- ✅ Color picker revamp (hue-only slider)
+- ✅ Animated puff preview (customize ekranında)
+- ✅ Minigame system (Drift & Catch)
+- ✅ State management revamp
+- ✅ Critical bug fixes (reference sharing, double-update, creature reversion)
+- ✅ Input handling improvements
+- ✅ Physics improvements (low energy sluggish behavior)
 
 ### Önceki Sürümler
+- **v1.0.x**: Theme system, settings panel, UI improvements
 - **v0.2.x**: Physics improvements, state effects
 - **v0.1.x**: Basic auth, database, puff creation
 
@@ -327,10 +380,10 @@ Tarayıcıda çalışan, mobil uyumlu, tek kişilik bir **virtual pet / dijital 
 ```bash
 # Commit changes
 git add .
-git commit -m "prep: release v1.0.4"
+git commit -m "prep: release v1.1.2"
 
 # Create tag
-git tag v1.0.4
+git tag v1.1.2
 
 # Push tag
 git push origin main --tags
@@ -338,8 +391,8 @@ git push origin main --tags
 
 ### GitHub Actions Otomasyonu
 1. Docker imajlarını build eder
-2. Docker Hub'a push eder (`v1.0.4`, `latest`)
-3. `release/docker-compose.yml` oluşturur (versioned tags)
+2. Docker Hub'a push eder (`v1.1.2`, `latest`)
+3. `release/docker-compose.yml` oluşturur (versioned tags ile)
 4. GitHub release oluşturur
 5. Release notes'ta sample .env ekler
 
@@ -366,5 +419,5 @@ Bu dosyayı proje ilerledikçe güncelleyeceğim:
 - 🔄 = Devam ediyor
 - ⚠️ = Kısmen tamamlandı
 
-**Son güncelleme:** 2026-02-05
-**Proje durumu:** v1.0.4 Release 🚀
+**Son güncelleme:** 2026-02-22
+**Proje durumu:** v1.1.2 Release 🚀

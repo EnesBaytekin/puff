@@ -14,6 +14,7 @@ Puff, soft-body (yumuşak cisim) fizik tabanlı bir sanal evcil hayvan uygulamas
 - Offline support ile client-side state sync
 - **Dark mode desteği (Light/Dark/Auto)**
 - **Modern UI/UX (modal panels, responsive)**
+- **Puff ismi gösterimi (ana ekran)**
 
 ---
 
@@ -168,8 +169,8 @@ conversionAmount = 2; // 2 fullness → 1 energy per minute
 - **Mobile Responsive:** Mobilde buton textleri gizlenir
 
 **Button Layout:**
-- **Top-Right:** ⚙️ Settings, 🚪 Logout (sistem ayarları)
-- **Bottom-Left:** 📊 Status, 🍽️ Food (oyunla ilgili butonlar)
+- **Top-Right:** 🚪 Logout, ⚙️ Settings (sistem ayarları)
+- **Bottom-Left:** 📊 Status, 🍽️ Food, 🎮 Play (oyunla ilgili butonlar)
 
 **Progress Bar System:**
 ```html
@@ -184,7 +185,7 @@ conversionAmount = 2; // 2 fullness → 1 energy per minute
 </div>
 ```
 
-### 8. Theme System ✅ (YENİ)
+### 8. Theme System ✅
 **Dosyalar:** `js/themeManager.js`, `js/globalSettings.js`, `css/style.css`
 
 **Özellikler:**
@@ -216,43 +217,50 @@ body.theme-dark {
 }
 ```
 
-### 9. Auth System Improvements ✅ (YENİ)
+### 9. Settings System ✅ (YENİ - TAB BASED)
+**Dosyalar:** `js/globalSettings.js`, `index.html`, `css/style.css`
+
+**Özellikler:**
+- **Tab-Based Interface:** Theme ve Password tab'ları
+- **Theme Tab:** Light/Dark/Auto mod seçimi
+- **Password Tab:** Şifre değiştirme (current password verification ile)
+- **Auth-Aware:** Login olmamış kullanıcılar sadece Theme tab'ını görür
+- **Global:** Tüm sayfalarda erişilebilir
+
+**Tab Navigation:**
+```javascript
+// Login olmamış: Sadece Theme tab
+// Login olmuş: Theme + Password tabları
+```
+
+**Password Change Form:**
+- Current password verification
+- New password validation (min 6 characters)
+- Confirm password matching
+- Success/error messages
+
+### 10. Puff Name Display ✅ (YENİ)
+**Dosyalar:** `js/views/app.js`, `index.html`, `css/style.css`
+
+**Özellikler:**
+- **Dynamic Font Size:** İsim uzunluğuna göre otomatik boyutlandırma
+  - 1-5 karakter: 2.5rem
+  - 6-10 karakter: 2rem
+  - 11-15 karakter: 1.5rem
+  - 16+ karakter: 1.2rem
+- **Position:** Ana ekranın en üstünde, ortalanmış
+- **Visibility:** Sadece ana ekranda görünür (minigame'de gizli)
+- **Styling:** Bold, text-shadow, word-break (mobilde)
+
+### 11. Auth System Improvements ✅
 **Dosyalar:** `js/api.js`, `index.html`
 
 **Özellikler:**
 - **Form Clearing:** Logout olduktan sonra tüm form alanları temizlenir
-- **Security:** Email/Password field'ları otomatik temizlenir
+- **Security:** Password field'ları otomatik temizlenir
 - **Auth Pages:** Login/Register/Customize sayfalarında da settings butonu
 
-### 10. Release System ✅
-**Dosyalar:** `.github/workflows/docker-build.yml`, `docker-compose.release.yml`
-
-**Özellikler:**
-- **Version Tags:** Release'da `docker-compose.yml` dosyası versiyon tag'li imajlar içerir
-- **Sample .env in Release:** Release notes'ta örnek .env içeriği
-- **Single File Release:** Release'da tek `docker-compose.yml` dosyası, direkt kullanıma hazır
-
-**Release Process:**
-```bash
-git tag v1.0.4
-git push origin v1.0.4
-```
-
-GitHub Actions:
-1. Docker imajlarını build eder ve push eder (`v1.0.4`, `latest`)
-2. `release/docker-compose.yml` oluşturur (versioned tags ile)
-3. GitHub release oluşturur, sample .env içeriği ekler
-
-### 11. Infrastructure Fixes ✅
-**Dosyalar:** `nginx.conf`, `docker-compose.*.yml`
-
-**Özellikler:**
-- **Nginx Configuration:** Service name kullanımı (`server:3000` yerine container name)
-- **Docker Compose:** Sadece 2 dosya (dev ve release)
-- **Network Configuration:** Tüm servisler aynı network'te (`puff-network`)
-- **Database Name:** `digitoy` → `puff` (tüm configuration'larda)
-
-### 12. Minigame System ✅ (YENİ - EN SON)
+### 12. Minigame System ✅
 **Dosyalar:** `js/minigame/` dizini
 
 **Özellikler:**
@@ -281,64 +289,7 @@ GitHub Actions:
 - Oyun biterinde final state StateManager'a kopyalanır
 - Progress bar'lar minigame sırasında creature'den canlı güncellenir
 
-**Dosyalar:**
-```
-js/minigame/
-├── minigame.js           # Base class - tüm minigameler için ortak interface
-├── minigameManager.js    # Minigame lifecycle yönetimi (start/end/update/render)
-├── driftGame.js          # Drift & Catch minigame implementation
-├── driftSolver.js        # Drift oyunu için özel physics solver
-├── targetCircle.js       # Hedef çemberi, progress tracking, collision
-└── particleEffect.js     # Particle sistemi (completion effects)
-```
-
-**Minigame Base Class Interface:**
-```javascript
-class Minigame {
-    start(initialState)        // Oyun başlat
-    end()                      // Oyun bitir, state changes return et
-    setup()                    // Kaynakları oluştur (override)
-    cleanup()                  // Kaynakları temizle (override)
-    update(deltaTime)          // Her frame çağrılır (override)
-    render(ctx)                // Her frame çiz (override)
-    handleInput(type, data)    // Input handling (override)
-    getStateChanges()          // Final state deltas (override)
-}
-```
-
-**Physics System (DriftSolver):**
-```javascript
-// Hitbox: Puff'ın collision alanı (0.75 × radius)
-hitboxRadius = softBody.radius * 0.75;
-
-// Push force: Her tıklamada küçük kuvvet
-basePushForce = 0.5;  // Çok küçük, momentum birikimi
-
-// Wall bounce: Kenarlardan sekme
-wallBounce = 0.9;  // %90 momentum korunur
-
-// Energy responsiveness
-energyMultiplier = 0.3 + energyFactor * 0.7;  // 1-100 energy
-// Low energy = yavaş tepki, high energy = hızlı tepki
-```
-
-**Target Circle System:**
-```javascript
-// Hedef completion
-requiredDuration = 3000;  // 3 saniye boyunca içinde tut
-
-// Progress tracking
-currentDuration += deltaTime;  // Her frame artar
-if (currentDuration >= requiredDuration) {
-    isCompleted = true;  // Hedef tamamlandı
-}
-
-// Collision detection
-farthestPointDistance = centerDistance + hitboxRadius;
-return farthestPointDistance <= targetRadius;
-```
-
-### 13. State Conversion Revamp ✅ (YENİ)
+### 13. State Conversion Revamp ✅
 **Dosya:** `js/stateManager.js`
 
 **Yeni Sistem:**
@@ -357,71 +308,31 @@ return farthestPointDistance <= targetRadius;
   - `MOOD_DECAY_PER_MIN = 99 / 540`
   - `ENERGY_DECAY_PER_MIN = 99 / 540`
 
-**Önceki Sistemden Farklar:**
-- ❌ Eski: Energy→Mood otomatik conversion vardı
-- ✅ Yeni: Energy→Mood sadece minigame'de
-
-- ❌ Eski: Farklı decay rate'ler (6.5-10 saat)
-- ✅ Yeni: Hepsi aynı (9 saat)
-
-### 14. Critical Bug Fixes ✅ (YENİ)
+### 14. Critical Bug Fixes ✅
 **Dosyalar:** `js/stateManager.js`, `js/minigame/`, `js/views/app.js`
 
 **Reference Sharing Bug:**
 - **Sorun:** `creature.puffState` ve `stateManager.currentState` aynı objeyi referans gösteriyordu
 - **Belirtiler:** Mood sürekli artıyordu (51 → 52 → 54 → 58 → 66 → 82 → 100)
 - **Çözüm:** Her state güncellemesinde **yeni obje** oluştur
-  ```javascript
-  // ❌ YANLIŞ
-  this.currentState.mood = newMood;  // Referans paylaşımı
-
-  // ✅ DOĞRU
-  this.currentState = {
-      hunger: newHunger,
-      mood: newMood,
-      energy: newEnergy
-  };  // Yeni obje
-  ```
 
 **Double-Update Bug:**
 - **Sorun:** Minigame'de hem canlı update hem de oyun sonu delta vardı
 - **Belirtiler:** Mood 2 kez artıyordu (live + end delta)
-- **Çözüm:**
-  1. Live update'i tamamen kaldır (callback disable)
-  2. Minigame sonu delta'si 0 olsun (state zaten sync)
-  3. Sadece oyun bitiminde final state kopyala
+- **Çözüm:** Live update'i kaldır, sadece oyun bitiminde final state kopyala
 
 **Creature Reversion Bug:**
 - **Sorun:** Minigame sırasında creature gülerken tekrar ciddileşiyordu
 - **Belirtiler:** Mood arttı ama yüz ifadesi değişmiyordu
 - **Çözüm:** Minigame aktifken StateManager creature'ı update ETMESİN
-  ```javascript
-  if (!isMinigameActive) {
-      this.appView.creature.updateState(this.currentState);
-  }
-  ```
 
-### 15. Input Handling Improvements ✅ (YENİ)
-**Dosyalar:** `js/input.js`, `js/minigame/driftGame.js`
+### 15. Release System ✅
+**Dosyalar:** `.github/workflows/docker-build.yml`, `docker-compose.release.yml`
 
-**Desktop Input:**
-- Mouse motion ile itme KALDIRILDI
-- Sadece **tıklama anında** itme
-- Basılı tutmak işlem yapmaz
-- Her tıklama = tek push force
-
-**Mobile Input:**
-- Dokunma anında itme (touchstart)
-- Parmak hareket ettirmesi ile İTME YOK (touchmove disabled)
-- Mobil ve desktop aynı davranış
-
-**Önceki Davranış:**
-- ❌ Desktop: Mouse motion ile sürekli itme
-- ❌ Mobile: Parmak sürüklerken sürekli itme
-
-**Yeni Davranış:**
-- ✅ Desktop: Click = tek itme
-- ✅ Mobile: Tap = tek itme
+**Özellikler:**
+- **Version Tags:** Release'da `docker-compose.yml` dosyası versiyon tag'li imajlar içerir
+- **Sample .env in Release:** Release notes'ta örnek .env içeriği
+- **Single File Release:** Release'da tek `docker-compose.yml` dosyası, direkt kullanıma hazır
 
 ---
 
@@ -436,7 +347,7 @@ js/
 │   ├── constraint.js    # Constraint class (distance constraint)
 │   ├── softbody.js      # MAIN: Creature rendering, state effects, eating animation
 │   └── solver.js        # Physics solver, damping, idle movement
-├── minigame/            # NEW: Minigame system
+├── minigame/            # Minigame system
 │   ├── minigame.js      # Base class for all minigames
 │   ├── minigameManager.js  # Minigame lifecycle management
 │   ├── driftGame.js     # Drift & Catch minigame
@@ -445,17 +356,17 @@ js/
 │   └── particleEffect.js # Particle effects system
 ├── canvas.js            # Canvas management
 ├── input.js             # Touch/mouse handling (minigame-aware)
-├── api.js               # API client, form clearing on logout
+├── api.js               # API client, password change endpoint
 ├── router.js            # View routing
 ├── stateManager.js      # State sync, decay, offline support, conversion
 ├── food.js              # Food system, drag & drop, effects
 ├── themeManager.js      # Theme management (light/dark/auto)
-├── globalSettings.js    # Global settings panel (all pages)
+├── globalSettings.js    # Global settings panel (all pages, tab-based)
 └── views/
     ├── login.js         # Login view
     ├── register.js      # Registration view
     ├── customize.js     # Puff creation view
-    └── app.js           # Main app view, progress bars, minigame toggle
+    └── app.js           # Main app view, puff name display, minigame toggle
 ```
 
 ### Backend Files
@@ -467,8 +378,8 @@ server/
 ├── middleware/
 │   └── auth.js          # JWT authentication
 └── routes/
-    ├── auth.js          # Login, register endpoints
-    └── puffs.js         # Puff CRUD, state update, offline decay
+    ├── auth.js          # Login, register, password change endpoints
+    └── puffs.js         # Puff CRUD, state update, offline decay, color update
 ```
 
 ---
@@ -484,9 +395,11 @@ server/
 6. **Food System:** 12 yiyecek, drag & drop, effects
 7. **UI System:** Modal panels, progress bars, responsive
 8. **Theme System:** Dark/light/auto modes, CSS variables
-9. **Settings System:** Global settings panel, all pages
-10. **Deployment:** Docker, versioned releases, nginx config
-11. **Offline Support:** LocalStorage sync, pending changes
+9. **Settings System:** Tab-based panel (Theme + Password)
+10. **Puff Name Display:** Dynamic font size, ana ekran
+11. **Password Change:** Current password verification ile güvenli değişim
+12. **Deployment:** Docker, versioned releases, nginx config
+13. **Offline Support:** LocalStorage sync, pending changes
 
 ### Kısa Vadede Yapılacaklar
 - [x] ~~Mini games (mood artırmak için)~~ ✅ TAMAMLANDI
@@ -505,128 +418,56 @@ server/
 
 ## Son Yapılan Değişiklikler (Recent Changes)
 
-### Auth System Complete Redesign (En Son) ✅
-**Dosyalar:** `server/db.js`, `server/routes/auth.js`, `js/api.js`, `js/router.js`, `index.html`, `js/views/login.js`, `js/views/register.js`, `js/views/customize.js`, `css/style.css`
+### v1.1.2 (2026-02-22) - YENİ ✅
+**Dosyalar:** `js/views/app.js`, `js/globalSettings.js`, `index.html`, `css/style.css`, `js/api.js`, `server/routes/auth.js`
 
-**Username-Based Auth:**
-- Email sistemi tamamen kaldırıldı, username ile giriş yapılıyor
-- Database schema: `email VARCHAR(255)` → `username VARCHAR(20) UNIQUE NOT NULL`
-- Username validation: Alphanumeric + underscore, 3-20 characters (`/^[a-zA-Z0-9_]{3,20}$/`)
-- JWT payload artık username içeriyor: `{ userId, username }`
+**Puff Name Display:**
+- Ana ekranın en üstünde puff ismi görünüyor
+- Dynamic font size (isim uzunluğuna göre)
+  - 1-5 karakter: 2.5rem
+  - 6-10 karakter: 2rem
+  - 11-15 karakter: 1.5rem
+  - 16+ karakter: 1.2rem
+- Minigame sırasında gizleniyor
+- Mobil uyumlu (word-break, responsive)
 
-**Auth Guards Implementation:**
-- `Router.handleNavigationEvent()` method ile navigation guard sistemi
-- Protected routes (app, customize): Auth yoksa login'e redirect
-- Auth routes (login, register): Auth varsa app/customize'e redirect
-- **Critical fix:** Logout sonrası back button protected sayfalara sokmuyor
-- **Redirect fix:** Register→customize→app akışı düzeltildi (customize'de çıkıp tekrar girince sorun yok)
+**Settings Button Layout:**
+- Önceden: Settings (sağ üst), Logout (altında)
+- Şimdi: Logout (üst), Settings (altında)
+- Uzun isimler için butonları taşma önlemi
 
-**App Rebrand:**
-- Title: "Digitoy" → "Puff Pet"
-- Tüm UI'da "Puff Pet" olarak güncellendi
-- Welcome messages güncellendi
+**Tab-Based Settings System:**
+- **Theme Tab:** Light/Dark/Auto mod seçimi
+- **Password Tab:** Şifre değiştirme
+  - Current password verification
+  - New password validation (min 6 chars)
+  - Confirm password matching
+  - Success/error messages
+- Auth-aware visibility (login olmamış kullanıcılar sadece Theme tab'ını görür)
+- Clean, modern tab navigation
 
-**Login/Register UI Redesign:**
-- Mascot emoji'ler (🐱 login, ✨ register, 🎨 customize)
-- Card style forms (shadow, border-radius, padding)
-- Gradient buttons (lineer gradient, hover effects)
-- Better typography (letter-spacing, font-weight)
-- Floating animation for mascot (`@keyframes float`)
-- Autocomplete attributes (username, current-password, new-password)
+**Password Change Backend:**
+- `POST /api/auth/change-password` endpoint
+- Current password verification (bcrypt)
+- New password validation
+- Same password check
+- Secure password hashing
 
-**Color Picker Revamp:**
-- HSV (3 slider) → Hue-only (1 slider) sistemi
-- Fixed saturation: 85%
-- Fixed lightness: 78%
-- Rainbow gradient slider (hue spectrum)
-- Desktop/mobile consistent (browser-native picker yok)
+**Color Tab Removed:**
+- Renk seçimi artık sadece yeni puff oluştururken (customize ekranında)
+- Settings'ten color tab kaldırıldı
+- Backend endpoint hala duruyor (ilerde lazım olabilir)
 
-**Animated Puff Preview:**
-- Canvas-based preview in customize screen
-- Real softbody creature with animations
-- Live color update (hue slider değiştikçe)
-- Happy state (mood=0, energy=100, hunger=100)
-
-**Physics Improvements:**
-- Low energy sluggish behavior (exponential damping)
-- Formula: `0.12 * e^(-4 * energyFactor)`
-- Energy 0 → 0.12 (çok ağır damping, hemen durur)
-- Energy 50 → 0.016 (orta)
-- Energy 100 → ~0 (normal)
-- Parmağı bıraktığında sallanmadan yavaşça merkeze gider
-
-### Minigame System & State Management Revamp ✅
-**Dosyalar:** `js/minigame/`, `js/stateManager.js`, `js/input.js`, `js/views/app.js`
-
-**Minigame System:**
-- Extensible minigame architecture (base class pattern)
-- Drift & Catch minigame implementation
-- Hitbox-based collision detection (0.75 × radius)
-- Wall bounce physics (90% momentum conservation)
-- Push force system (small force, momentum accumulation)
-- Target circle with progress tracking (3 seconds)
-- Particle effects on completion
-- Energy→Mood conversion (4-5 energy → 4-5 mood per target)
-- Desktop/mobile unified input (click/tap = single push)
-
-**State Management Fixes:**
-- Reference sharing bug fix (her güncelleme yeni obje)
-- Double-update bug fix (live update kaldırıldı)
-- Creature reversion bug fix (minigame'de StateManager creature'ı update etmez)
-- Decay rate revamp (hepsi 9 saat, 100→1)
-- Hunger→Energy fast conversion (3 per minute, 5-10 dakikada 20 point)
-- Energy→Mood ONLY in minigame (default decay'da yok)
-
-**Input Handling:**
-- Desktop: Mouse motion ile itme KALDIRILDI, sadece tıklama
-- Mobile: Parmak hareket ile itme KALDIRILDI, sadece dokunma
-- Unified behavior: Tek tık/dokunma = tek itme
-
-**Cache-Busting:**
-- HTML script tags versioned (`?v=2`)
-- Development'ta cache sorunlarını önler
-
-### UI/UX Complete Redesign ✅
-**Dosyalar:** `index.html`, `css/style.css`, `js/views/app.js`, `js/globalSettings.js`
-
-- Modal panel sistemi (overlay backdrop ile)
-- Control button layout (top-right: settings/logout, bottom-left: status/food/play)
-- Z-index hierarchy (canvas: 998, controls: 999, minigame exit: 1001)
-- Touch-optimized butonlar (user-select: none, touch-action: manipulation)
-- Responsive tasarım (mobile'da buton text'leri gizlenir)
-- Close button ve overlay click-to-close özellikleri
-
-### Dark Mode & Theme System ✅
-**Dosyalar:** `js/themeManager.js`, `js/globalSettings.js`, `css/style.css`
-
-- Light/Dark/Auto theme desteği
-- CSS custom properties ile renk yönetimi
-- Sistem tercihini otomatik algılama
-- Global settings panel (tüm sayfalarda erişilebilir)
-- Auth sayfalarında da theme değiştirme
-
-### Auth System Improvements ✅
-**Dosyalar:** `js/api.js`, `index.html`
-
-- Logout sonrası form alanlarını temizleme
-- Login/Register/Customize sayfalarında settings butonu
-- Auth page controls (sağ üstte)
-
-### Infrastructure Fixes ✅
-**Dosyalar:** `nginx.conf`, `docker-compose.*.yml`
-
-- Nginx upstream config (service name kullanımı)
-- Docker compose cleanup (sadece dev ve release)
-- Network configuration consistency
-- API function name fix (`API.getPuff()` → `API.getMyPuff()`)
-
-### Database & Release System ✅
-**Dosyalar:** `server/db.js`, `.github/workflows/docker-build.yml`
-
-- Database name change: `digitoy` → `puff`
-- Release system with version tags
-- Sample .env in release notes
-- Single file release
+### v1.1.1 (2026-02-09)
+- Username-Based Auth (email kaldırıldı)
+- Login/Register UI redesign (mascot emoji'ler, gradient butonlar)
+- Color picker revamp (hue-only slider, canlı pastel)
+- Animated puff preview (customize ekranında)
+- Minigame system (Drift & Catch)
+- State management revamp
+- Critical bug fixes (reference sharing, double-update, creature reversion)
+- Input handling improvements
+- Physics improvements (low energy sluggish behavior)
 
 ---
 
@@ -665,196 +506,15 @@ docker-compose up -d
 - **Database Name:** `puff` (eskiden `digitoy`)
 - **Integer Values:** Tüm state değerleri integer (1-100), decimal yok
 - **Theme Classes:** `theme-light`, `theme-dark` (body element)
-- **Panel States:** `.active` class (`.open` kullanılmıyor artık)
-
-### Minigame İçin Önemli Kurallar ⚠️
-
-**1. Reference Sharing Bug:**
-```javascript
-// ❌ YANLIŞ - Aynı objeyi referans gösterir
-this.currentState = otherState;
-this.currentState.mood = 50;  // otherState.mood da değişir!
-
-// ✅ DOĞRU - Yeni obje oluştur (deep copy)
-this.currentState = {
-    hunger: otherState.hunger,
-    mood: otherState.mood,
-    energy: otherState.energy
-};
-```
-
-**2. Minigame State Sync:**
-```javascript
-// ❌ YANLIŞ - Canlı update var
-notifyStateChange();  // Her frame'de çağrılır
-StateManager.updateUI();  // Creature'ı override eder
-
-// ✅ DOĞRU - Sadece oyun biterinde sync
-// Minigame sırasında: creature.puffState güncellenir
-// Oyun biterinde: StateManager.currentState = finalState
-```
-
-**3. Minigame Input:**
-```javascript
-// ❌ YANLIŞ - Motion ile itme
-handleTouchMove(data) {
-    driftSolver.applyPushForce(data.x, data.y);  // Sürekli itme
-}
-
-// ✅ DOĞRU - Sadece dokunma/tıklama ile itme
-handleTouchStart(data) {
-    driftSolver.applyPushForce(data.x, data.y);  // Tek itme
-}
-handleTouchMove(data) {
-    // Hiçbir şey yapma - hareket ile itme yok
-}
-```
-
-**4. State Conversion:**
-```javascript
-// ❌ YANLIŞ - Otomatik Energy→Mood
-if (energy > 1 && mood < 100) {
-    energy -= 1;
-    mood += 1;  // Otomatik conversion
-}
-
-// ✅ DOĞRU - Sadece minigame'de Energy→Mood
-// Default decay'da YOK, minigame'de manual conversion
-onTargetCaught() {
-    energy -= 4;
-    mood += 4;  // Sadece hedef yakalandığında
-}
-```
-
-**5. Decay Rate:**
-```javascript
-// Tüm state'ler aynı decay rate (9 saatte 100→1)
-FULLNESS_DECAY_PER_MIN = 99 / 540;
-MOOD_DECAY_PER_MIN = 99 / 540;
-ENERGY_DECAY_PER_MIN = 99 / 540;
-```
-
----
-
-## Test Notes
-
-### Theme Test
-1. Settings paneli aç
-2. Light/Dark/Auto modları arasında geçiş yap
-3. Tüm sayfalarda (login/register/customize/app) test et
-4. System preference değişimini test et (Auto mode)
-
-### Decay Test
-1. Puff state'lerini 100 yap
-2. 30 saniye bekle
-3. State'ler azalmalı (client-side decay, ~0.09 per 30s)
-4. 9 saatte 100→1 olmalı
-
-### Food Effect Test
-1. Cake yedir (sugar crash)
-2. Mood hızla azalmalı (2x decay, 5 dakika)
-3. Fish yedir (protein boost)
-4. Energy yavaş azalmalı (0.5x decay, 10 dakika)
-
-### Hunger → Energy Conversion Test
-1. Hunger > Energy yap (örn: Hunger=80, Energy=30)
-2. Birkaç dakika bekle
-3. Hunger azalmalı, Energy artmalı (3 per minute)
-
-### Minigame Test (YENİ)
-1. Minigame butonuna tıkla
-2. Puff'ı it (mouse click veya touch)
-3. Puff momentumla hareket etmeli
-4. Puff'ı hedef çemberinin içine tut (3 saniye)
-5. Progress bar dolumalı
-6. Hedef tamamlandıktan sonra:
-   - Particle effects
-   - Energy azalmalı (4-5)
-   - Mood artmalı (4-5)
-7. Creature gülmeli (mood arttığı için)
-8. Oyun boyunca creature gülmeye devam etmeli (ciddileşmemeli)
-9. Oyundan çıkınca mood yüksek kalmalı
-10. Progress bar'lar güncel kalmalı
-
-### Minigame Input Test (YENİ)
-**Desktop:**
-1. Mouse ile tıkla → Puff itmeli
-2. Mouse hareket ettir (basılı tutmadan) → Hiçbir şey olmamalı
-3. Mouse basılı tut → HİÇBİR ŞEY olmamalı (motion ile itme yok)
-4. Birden fazla tıkla → Her tıklamada itmeli
-
-**Mobile:**
-1. Ekrana dokun → Puff itmeli
-2. Parmak sürükle → Hiçbir şey olmamalı (motion ile itme yok)
-3. Birden fazla dokun → Her dokunuşta itmeli
-
-### Minigame Physics Test (YENİ)
-1. Puff'ı kenara it → Sekmeli (wall bounce: 90%)
-2. Puff'ı hızlı it → Momentum birikmeli
-3. Energy düşük olunca (1-10) → Yavaş tepki vermeli
-4. Energy yüksek olunca (90-100) → Hızlı tepki vermeli
-5. Hedef çemberinden çıkarsa → Progress reset olmalı
-
-### Minigame State Sync Test (YENİ)
-1. Minigame başlat → StateManager state'i creature'a kopyalanmalı
-2. Minigame sırasında hedef yakala → creature.puffState güncellenmeli
-3. Minigame boyunca creature gülmeli → StateManager creature'ı override ETMEMELİ
-4. Oyunu bitir → Final state StateManager'a kopyalanmalı
-5. Progress bar'lar güncel state'i göstermeli
-
-### Offline Test
-1. Uygulamayı aç
-2. Internet'i kes
-3. Yemek yedir (state değişikliği)
-4. LocalStorage'a kaydolmalı, pending changes eklenmeli
-5. Internet'i aç
-6. Pending changes server'a sync olmalı
-
-### Form Clearing Test
-1. Login ol
-2. Logout yap
-3. Email/password field'ları temizlenmeli
-4. Browser back/forward yap
-5. Field'lar hala temiz olmalı
-
----
-
-## Docker Compose Notları
-
-- **Database Name:** `puff` (environment variable ile override edilebilir)
-- **Version Tags:** Release'da `v1.0.0` gibi specific tags
-- **Latest Tags:** Development'ta `latest` tag kullanılır
-- **Container Names:** `puff-db`, `puff-server`, `puff-ui`
-- **Network:** `puff-network` (tüm servisler aynı network'te)
-- **Compose Files:** Sadece 2 dosya (dev ve release)
+- **Panel States:** `.active` class
 
 ---
 
 ## Son Güncelleme Tarihi
 
-2026-02-09 - v1.1.1
-- **Username-Based Auth:** Email sistemi kaldırıldı, username ile kayıt/giriş
-- **Auth System Redesign:** App name "Puff Pet" olarak değiştirildi
-- **Login/Register UI:** Mascot emoji'ler, card style form, gradient butonlar
-- **Auth Guards:** Logout sonrası back button protected sayfalara sokmuyor
-- **Redirect Fix:** Register→customize→app akışı düzeltildi
-- **Color Picker Revamp:** Hue-only slider, 85% sat / 78% lightness (canlı pastel)
-- **Puff Preview:** Customize ekranında animated softbody creature
-- **Minigame Center Fix:** Minigame başladığında puff tam ortaya teleport oluyor
-- **Physics Improvements:** Low energy sluggish behavior (exponential damping)
-- **Minigame System:** Drift & Catch minigame eklendi
-- **State Management:** Conversion sistemi revamp edildi
-- **Critical Bugs:** Reference sharing, double-update, creature reversion fixlendi
-- **Input Handling:** Desktop/mobile unified (click/tap = single push)
-- **Decay Rate:** Hepsi 9 saatte 100→1
-- **Cache-Busting:** Development cache sorunları çözüldü
-
-2026-02-09 - v1.1.0
-- Minigame system ilk versiyonu
-
-2026-02-05 - v1.0.5
-- Complete UI/UX redesign (modal panels)
-- Dark mode support (light/dark/auto)
-- Global settings panel (all pages)
-- Auth improvements (form clearing)
-- Infrastructure fixes (nginx, docker)
+**2026-02-22 - v1.1.2**
+- **Puff Name Display:** Ana ekranda dynamic font size ile isim gösterimi
+- **Settings Layout:** Settings butonu Logout'un altına alındı
+- **Tab-Based Settings:** Theme ve Password tab'ları
+- **Password Change:** Güvenli şifre değiştirme sistemi
+- **Color Tab Removed:** Renk seçimi sadece customize ekranında
