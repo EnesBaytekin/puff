@@ -3,9 +3,6 @@
 
 class SoftBody {
     constructor(centerX, centerY, radius, numParticles = 16, customColor = null, puffState = null) {
-        console.log('=== SOFTBODY CONSTRUCTOR ===');
-        console.log('customColor (param):', customColor);
-
         this.particles = [];
         this.constraints = [];
         this.radius = radius;
@@ -13,8 +10,6 @@ class SoftBody {
         this.color = this.baseColor;
         this.baseRadius = radius;
         this.numParticles = numParticles;
-
-        console.log('this.baseColor (after set):', this.baseColor);
 
         // Puff state (hunger, mood, energy) - values 0-100
         // Handle null values from database
@@ -33,8 +28,6 @@ class SoftBody {
 
         // Apply initial color calculation based on hunger
         this.updateColorByHunger();
-
-        console.log('this.color (after updateColorByHunger):', this.color);
 
         // YENİ SİSTEM: Büyük düzensiz daire + 6 küçük hareketli daire
         this.mainCircle = {

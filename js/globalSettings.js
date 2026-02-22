@@ -28,6 +28,8 @@ const GlobalSettings = {
         this.setupPasswordChange();
         // Setup color preview
         this.setupColorPreview();
+        // Update tab visibility based on auth status
+        this.updateTabVisibility();
     },
 
     setupSettingsButtons() {
@@ -409,20 +411,9 @@ const GlobalSettings = {
             // Fetch updated puff data and reinitialize app view
             const updatedPuff = await API.getMyPuff();
 
-            console.log('=== COLOR SAVE DEBUG ===');
-            console.log('New color (HSL):', newColor);
-            console.log('Puff from server:', updatedPuff);
-            console.log('Puff color from server:', updatedPuff.color);
-            console.log('window.AppView exists?', !!window.AppView);
-            console.log('window.AppView.init is function?', typeof window.AppView?.init);
-
             if (window.AppView && typeof window.AppView.init === 'function') {
-                console.log('About to call AppView.init()');
-                console.log('Old creature color before init:', window.AppView.creature?.baseColor);
                 // Clean up old instance and reinitialize with new data
                 window.AppView.init(updatedPuff);
-                console.log('AppView.init() returned');
-                console.log('New creature color after init:', window.AppView.creature?.baseColor);
             } else {
                 console.error('AppView or AppView.init not available!');
             }

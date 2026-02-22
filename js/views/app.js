@@ -12,9 +12,6 @@ const AppView = {
     lastFrameTime: 0,
 
     init(puffData) {
-        console.log('=== APPVIEW INIT START ===');
-        console.log('puffData.color:', puffData.color);
-
         // Clean up previous instance if exists
         this.cleanup();
 
@@ -37,10 +34,6 @@ const AppView = {
         };
 
         this.creature = new SoftBody(centerX, centerY, radius, 20, puffData.color, puffState);
-
-        console.log('Creature created!');
-        console.log('Creature.baseColor:', this.creature.baseColor);
-        console.log('Creature.color:', this.creature.color);
 
         // Initialize physics solver
         this.physicsSolver = new PhysicsSolver(
