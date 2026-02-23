@@ -181,5 +181,19 @@ const API = {
         }
 
         return response.json();
+    },
+
+    async setSleepState(isSleeping) {
+        const response = await this.request('/api/puffs/sleep', {
+            method: 'PUT',
+            body: JSON.stringify({ isSleeping })
+        });
+
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.error || 'Failed to update sleep state');
+        }
+
+        return response.json();
     }
 };

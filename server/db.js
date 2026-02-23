@@ -40,6 +40,30 @@ async function initDB() {
         `);
         console.log('Puffs table initialized');
 
+        // Migration: Add is_sleeping column if not exists (for existing databases)
+        try {
+            // Check if column exists
+            const columnCheck = await client.query(`
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = 'puffs' AND column_name = 'is_sleeping'
+            `);
+
+            if (columnCheck.rows.length === 0) {
+                // Column doesn't exist, add it
+                await client.query(`
+                    ALTER TABLE puffs
+                    ADD COLUMN is_sleeping BOOLEAN DEFAULT FALSE
+                `);
+                console.log('Migration: Added is_sleeping column to puffs table');
+            } else {
+                console.log('Migration: is_sleeping column already exists');
+            }
+        } catch (err) {
+            console.error('Migration error (is_sleeping):', err.message);
+            // Don't throw - migration errors shouldn't crash the app
+        }
+
     } catch (err) {
         console.error('Database initialization error:', err);
         throw err;

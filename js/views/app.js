@@ -85,6 +85,11 @@ const AppView = {
                 this.creature.updateState(state);
                 // Update progress bars
                 this.updateProgressBars(state);
+
+                // Update sleep UI based on server state
+                const isSleeping = this.stateManager.isSleeping;
+                this.updateSleepUI(isSleeping);
+                this.creature.setSleepState(isSleeping);
             }
         });
 
@@ -98,6 +103,9 @@ const AppView = {
 
         // Setup status panel
         this.setupStatusPanel(puffState);
+
+        // Setup sleep toggle
+        this.setupSleepToggle();
 
         // Initialize food drag handler (after status panel setup)
         this.foodDragHandler = new FoodDragHandler(this);
@@ -131,6 +139,56 @@ const AppView = {
 
         // Update progress bars with initial values
         this.updateProgressBars(initialState);
+    },
+
+    setupSleepToggle() {
+        const sleepBtn = document.getElementById('sleep-toggle-btn');
+        const sleepText = document.getElementById('sleep-text');
+
+        if (!sleepBtn) return;
+
+        sleepBtn.addEventListener('click', async () => {
+            const currentState = this.stateManager.isSleeping;
+
+            // Toggle sleep state
+            const newState = !currentState;
+            await this.stateManager.setSleepState(newState);
+
+            // Update UI
+            this.updateSleepUI(newState);
+        });
+    },
+
+    updateSleepUI(isSleeping) {
+        const sleepBtn = document.getElementById('sleep-toggle-btn');
+        const sleepText = document.getElementById('sleep-text');
+        const sleepOverlay = document.getElementById('sleep-overlay');
+
+        if (isSleeping) {
+            // Update button
+            if (sleepBtn) sleepBtn.classList.add('sleeping');
+            if (sleepText) sleepText.textContent = 'Wake Up';
+
+            // Show dark overlay
+            if (sleepOverlay) sleepOverlay.classList.add('active');
+
+            // Update creature
+            if (this.creature) this.creature.setSleepState(true);
+
+            console.log('[App] Sleep mode activated');
+        } else {
+            // Update button
+            if (sleepBtn) sleepBtn.classList.remove('sleeping');
+            if (sleepText) sleepText.textContent = 'Sleep';
+
+            // Hide dark overlay
+            if (sleepOverlay) sleepOverlay.classList.remove('active');
+
+            // Update creature
+            if (this.creature) this.creature.setSleepState(false);
+
+            console.log('[App] Sleep mode deactivated');
+        }
     },
 
     openStatusPanel() {
@@ -194,6 +252,12 @@ const AppView = {
     },
 
     startMinigame() {
+        // Prevent starting minigame while sleeping
+        if (this.stateManager && this.stateManager.isSleeping) {
+            alert('Your puff is sleeping! Wake them up first.');
+            return;
+        }
+
         // Hide puff name during minigame
         this.hidePuffName();
 
@@ -384,6 +448,7 @@ const AppView = {
         const foodToggleBtn = document.getElementById('food-toggle-btn');
         const minigameOverlay = document.getElementById('minigame-overlay');
         const minigameExitBtn = document.getElementById('minigame-exit-btn');
+        const sleepOverlay = document.getElementById('sleep-overlay');
 
         if (statusOverlay) statusOverlay.classList.remove('active');
         if (foodOverlay) foodOverlay.classList.remove('active');
@@ -393,6 +458,7 @@ const AppView = {
         if (foodToggleBtn) foodToggleBtn.classList.remove('active');
         if (minigameOverlay) minigameOverlay.classList.remove('active');
         if (minigameExitBtn) minigameExitBtn.classList.remove('active');
+        if (sleepOverlay) sleepOverlay.classList.remove('active');
 
         this.isPanelOpen = false;
 

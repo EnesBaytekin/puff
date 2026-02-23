@@ -15,6 +15,7 @@ class StateManager {
         this.activeEffects = []; // Active food effects (crash, protein, etc.)
         this.storageKey = null; // User-specific storage key
         this.skipLocalStorage = skipLocalStorage; // Skip localStorage on first load
+        this.isSleeping = false; // Sleep state
 
         this.init();
     }
@@ -82,6 +83,7 @@ class StateManager {
                     }))
                     .filter(change => change.state); // Filter out invalid entries
                 this.activeEffects = data.activeEffects || [];
+                this.isSleeping = data.isSleeping || false; // Load sleep state
             }
         } catch (err) {
             console.error('Failed to load from localStorage:', err);
@@ -97,7 +99,8 @@ class StateManager {
                 puffState: this.currentState,
                 lastUpdate: this.lastServerUpdate?.toISOString() || new Date().toISOString(),
                 pendingChanges: this.pendingChanges,
-                activeEffects: this.activeEffects
+                activeEffects: this.activeEffects,
+                isSleeping: this.isSleeping // Save sleep state
             };
             localStorage.setItem(this.storageKey, JSON.stringify(data));
         } catch (err) {
@@ -118,6 +121,7 @@ class StateManager {
                 energy: puffData.energy
             };
             this.lastServerUpdate = new Date(puffData.updated_at);
+            this.isSleeping = puffData.is_sleeping || false; // Load sleep state from server
 
             // Clear pending changes (they're now on server)
             this.pendingChanges = [];
@@ -125,6 +129,7 @@ class StateManager {
             this.saveToStorage();
 
             console.log('[StateManager] Updating UI with state:', this.currentState);
+            console.log('[StateManager] Sleep state:', this.isSleeping);
             // Update UI with fresh state
             this.updateUI();
 
@@ -241,11 +246,14 @@ class StateManager {
         // 30 seconds = 0.5 minutes
         const minutesPassed = 0.5;
 
-        // Decay rates - 8-10 hours to go from 100 to 1
-        // 99 points in 8-10 hours = 0.165-0.206 per minute
+        // Decay rates - 9 hours to go from 100 to 1
         const FULLNESS_DECAY_PER_MIN = 99 / 540;  // ~0.183 (9 hours)
         const MOOD_DECAY_PER_MIN = 99 / 540;      // ~0.183 (9 hours)
-        const ENERGY_DECAY_PER_MIN = 99 / 540;    // ~0.183 (9 hours)
+
+        // Energy: recover if sleeping, decay if awake
+        // 5 hours to full recovery: 99 points in 300 minutes = ~0.33 per minute
+        const ENERGY_RECOVERY_PER_MIN = 99 / 300;  // ~0.33 (5 hours to recover)
+        const ENERGY_DECAY_PER_MIN = 99 / 540;     // ~0.183 (9 hours to decay)
 
         // Get current decay multipliers from active effects
         const moodDecayMultiplier = this.getMoodDecayMultiplier();
@@ -254,15 +262,23 @@ class StateManager {
         // Calculate new values with minimum = 1
         let newHunger = this.currentState.hunger - (minutesPassed * FULLNESS_DECAY_PER_MIN);
         let newMood = this.currentState.mood - (minutesPassed * MOOD_DECAY_PER_MIN * moodDecayMultiplier);
-        let newEnergy = this.currentState.energy - (minutesPassed * ENERGY_DECAY_PER_MIN * energyDecayMultiplier);
+
+        // Energy: recover if sleeping, decay if awake
+        let newEnergy;
+        if (this.isSleeping) {
+            // Recover energy during sleep (max 100)
+            newEnergy = this.currentState.energy + (minutesPassed * ENERGY_RECOVERY_PER_MIN * energyDecayMultiplier);
+        } else {
+            // Decay energy when awake
+            newEnergy = this.currentState.energy - (minutesPassed * ENERGY_DECAY_PER_MIN * energyDecayMultiplier);
+        }
 
         // Apply conversions (hunger → energy → mood)
-
-        // Hunger → Energy conversion (ONLY conversion that happens automatically)
+        // Hunger → Energy conversion (ONLY when awake and NOT sleeping)
         // If hunger is higher than energy, convert hunger to energy until equal
         // Fast conversion: 5-10 minutes for 20 points
         // 20 points in 5-10 min = 2-4 points per minute
-        if (newHunger > newEnergy && newEnergy < 100) {
+        if (!this.isSleeping && newHunger > newEnergy && newEnergy < 100) {
             const conversionRate = 3; // Fast conversion (3 points per minute)
             const difference = newHunger - newEnergy;
             const actualConversion = Math.min(difference, conversionRate * minutesPassed);
@@ -411,6 +427,30 @@ class StateManager {
 
         // Update UI
         this.updateUI();
+    }
+
+    // Set sleep state
+    async setSleepState(isSleeping) {
+        this.isSleeping = isSleeping;
+        this.saveToStorage();
+
+        // Sync to server immediately
+        if (this.isOnline) {
+            try {
+                await API.setSleepState(isSleeping);
+                console.log('[StateManager] Sleep state synced:', isSleeping);
+            } catch (err) {
+                console.error('Failed to sync sleep state:', err);
+            }
+        }
+
+        // Update UI
+        this.updateUI();
+    }
+
+    // Get sleep state
+    isSleeping() {
+        return this.isSleeping;
     }
 
     // Cleanup

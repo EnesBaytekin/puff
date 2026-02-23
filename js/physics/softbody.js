@@ -19,12 +19,19 @@ class SoftBody {
             energy: puffState?.energy ?? 50   // 0 = exhausted (slow), 100 = full energy (fast)
         };
 
+        // Sleep state
+        this.isSleeping = false;
+
         // Eating animation state
         this.isEating = false;
         this.eatingTimer = 0;
         this.eatingDuration = 600; // ms
         this.chewCount = 0;
         this.chewMax = 3; // Number of chews
+
+        // Sleep particles (z-z-z)
+        this.sleepParticles = [];
+        this.lastSleepParticleTime = 0;
 
         // Apply initial color calculation based on hunger
         this.updateColorByHunger();
@@ -205,6 +212,15 @@ class SoftBody {
         if (newState.energy !== undefined) this.puffState.energy = newState.energy;
     }
 
+    // Set sleep state
+    setSleepState(isSleeping) {
+        this.isSleeping = isSleeping;
+        // Clear particles when waking up
+        if (!isSleeping) {
+            this.sleepParticles = [];
+        }
+    }
+
     // Start eating animation
     startEating() {
         this.isEating = true;
@@ -237,6 +253,14 @@ class SoftBody {
         // Update mainCircle position to follow the center particle
         this.mainCircle.x = this.centerParticle.x;
         this.mainCircle.y = this.centerParticle.y;
+
+        // Breathing animation when sleeping
+        let breathingScale = 1.0;
+        if (this.isSleeping) {
+            // Slow breathing: sine wave with period of ~3 seconds
+            const time = Date.now() * 0.002;
+            breathingScale = 1.0 + Math.sin(time) * 0.03; // ±3% size variation
+        }
 
         const numPoints = this.mainCircle.deformPoints.length;
 
@@ -292,10 +316,10 @@ class SoftBody {
             lastDeform -= lastVerticalShrink;
         }
 
-        const firstX = this.mainCircle.x + Math.cos(firstAngle) * this.mainCircle.radius * firstDeform;
-        const firstY = this.mainCircle.y + Math.sin(firstAngle) * this.mainCircle.radius * firstDeform;
-        const lastX = this.mainCircle.x + Math.cos(lastAngle) * this.mainCircle.radius * lastDeform;
-        const lastY = this.mainCircle.y + Math.sin(lastAngle) * this.mainCircle.radius * lastDeform;
+        const firstX = this.mainCircle.x + Math.cos(firstAngle) * this.mainCircle.radius * breathingScale * firstDeform;
+        const firstY = this.mainCircle.y + Math.sin(firstAngle) * this.mainCircle.radius * breathingScale * firstDeform;
+        const lastX = this.mainCircle.x + Math.cos(lastAngle) * this.mainCircle.radius * breathingScale * lastDeform;
+        const lastY = this.mainCircle.y + Math.sin(lastAngle) * this.mainCircle.radius * breathingScale * lastDeform;
 
         const midX = (firstX + lastX) / 2;
         const midY = (firstY + lastY) / 2;
@@ -333,8 +357,8 @@ class SoftBody {
                 deform -= verticalShrink;
             }
 
-            const x = this.mainCircle.x + Math.cos(angle) * this.mainCircle.radius * deform;
-            const y = this.mainCircle.y + Math.sin(angle) * this.mainCircle.radius * deform;
+            const x = this.mainCircle.x + Math.cos(angle) * this.mainCircle.radius * breathingScale * deform;
+            const y = this.mainCircle.y + Math.sin(angle) * this.mainCircle.radius * breathingScale * deform;
 
             // Bir sonraki noktanın orta noktasını hesapla
             const nextPoint = this.mainCircle.deformPoints[(i + 1) % numPoints];
@@ -359,8 +383,8 @@ class SoftBody {
                 nextDeform -= nextVerticalShrink;
             }
 
-            const nextX = this.mainCircle.x + Math.cos(nextAngle) * this.mainCircle.radius * nextDeform;
-            const nextY = this.mainCircle.y + Math.sin(nextAngle) * this.mainCircle.radius * nextDeform;
+            const nextX = this.mainCircle.x + Math.cos(nextAngle) * this.mainCircle.radius * breathingScale * nextDeform;
+            const nextY = this.mainCircle.y + Math.sin(nextAngle) * this.mainCircle.radius * breathingScale * nextDeform;
 
             const nextMidX = (x + nextX) / 2;
             const nextMidY = (y + nextY) / 2;
@@ -384,6 +408,60 @@ class SoftBody {
 
         // Draw the face on top
         this.drawFace(ctx);
+
+        // Draw sleep particles (z-z-z)
+        if (this.isSleeping) {
+            this.drawSleepParticles(ctx);
+        }
+    }
+
+    // Draw sleep particles (z-z-z effect)
+    drawSleepParticles(ctx) {
+        const currentTime = Date.now();
+
+        // Add new particle every 2 seconds
+        if (currentTime - this.lastSleepParticleTime > 2000) {
+            this.lastSleepParticleTime = currentTime;
+            this.sleepParticles.push({
+                x: this.centerParticle.x + this.radius * 0.5,
+                y: this.centerParticle.y - this.radius * 0.5,
+                vx: 0.5 + Math.random() * 0.5, // Move right
+                vy: -0.3 - Math.random() * 0.3, // Move up
+                life: 1.0, // Life from 1.0 to 0.0
+                scale: 0.8 + Math.random() * 0.4
+            });
+        }
+
+        // Update and draw particles
+        ctx.fillStyle = this.getContrastColor();
+        ctx.font = `${this.radius * 0.15}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        for (let i = this.sleepParticles.length - 1; i >= 0; i--) {
+            const p = this.sleepParticles[i];
+
+            // Update position
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 0.005; // Fade out
+
+            // Remove dead particles
+            if (p.life <= 0) {
+                this.sleepParticles.splice(i, 1);
+                continue;
+            }
+
+            // Draw "z" with fading
+            ctx.globalAlpha = p.life * 0.6;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.scale(p.scale, p.scale);
+            ctx.fillText('z', 0, 0);
+            ctx.restore();
+        }
+
+        ctx.globalAlpha = 1.0; // Reset alpha
     }
 
     // Draw a single hand-drawn stroke with variation
@@ -443,21 +521,39 @@ class SoftBody {
         const mouthX = centerX + this.mouthOffset.x;
         const mouthY = centerY + this.mouthOffset.y;
 
-        // Draw eyes (simple dots)
         ctx.fillStyle = this.getContrastColor();
-        ctx.beginPath();
-        ctx.arc(leftEyeX, leftEyeY, this.radius * 0.08, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.strokeStyle = this.getContrastColor();
 
-        ctx.beginPath();
-        ctx.arc(rightEyeX, rightEyeY, this.radius * 0.08, 0, Math.PI * 2);
-        ctx.fill();
+        // Draw eyes - closed if sleeping
+        if (this.isSleeping) {
+            // Closed eyes (arcs)
+            ctx.lineWidth = this.radius * 0.03;
+            ctx.lineCap = 'round';
+
+            // Left eye (closed arc)
+            ctx.beginPath();
+            ctx.arc(leftEyeX, leftEyeY, this.radius * 0.08, 0.2 * Math.PI, 0.8 * Math.PI);
+            ctx.stroke();
+
+            // Right eye (closed arc)
+            ctx.beginPath();
+            ctx.arc(rightEyeX, rightEyeY, this.radius * 0.08, 0.2 * Math.PI, 0.8 * Math.PI);
+            ctx.stroke();
+        } else {
+            // Open eyes (simple dots)
+            ctx.beginPath();
+            ctx.arc(leftEyeX, leftEyeY, this.radius * 0.08, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(rightEyeX, rightEyeY, this.radius * 0.08, 0, Math.PI * 2);
+            ctx.fill();
+        }
 
         // Draw mouth based on mood - narrow, cute mouth
         // Mood 100 = very sad (downward U), Mood 50 = neutral (flat line), Mood 0 = very happy (upward U)
         const mood = this.puffState.mood || 50;
 
-        ctx.strokeStyle = this.getContrastColor();
         ctx.lineWidth = this.radius * 0.025; // Slightly thinner for cute look
         ctx.lineCap = 'round';
         ctx.beginPath();

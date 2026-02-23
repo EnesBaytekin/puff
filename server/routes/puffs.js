@@ -58,28 +58,38 @@ router.get('/mine', authenticateToken, async (req, res) => {
 
         let puff = result.rows[0];
 
-        // Calculate offline decay
+        // Calculate offline decay/recovery
         const now = new Date();
         const lastUpdate = new Date(puff.updated_at);
         const minutesPassed = (now - lastUpdate) / (1000 * 60);
 
         if (minutesPassed > 0) {
-            // Decay rates (per minute) - 10 hours = 600 minutes for 100→1
-            // Fullness: ~10 hours to reach minimum
-            // Mood: ~8 hours to reach minimum
-            // Energy: ~6.5 hours to reach minimum
-            const FULLNESS_DECAY_PER_MIN = 99 / 600;  // ~0.165
-            const MOOD_DECAY_PER_MIN = 99 / 480;      // ~0.206
-            const ENERGY_DECAY_PER_MIN = 99 / 390;    // ~0.254
+            // Decay rates (per minute) - 9 hours = 540 minutes for 100→1
+            const FULLNESS_DECAY_PER_MIN = 99 / 540;  // ~0.183
+            const MOOD_DECAY_PER_MIN = 99 / 540;      // ~0.183
+
+            // Energy: decay if awake, recover if sleeping
+            // 4-5 hours to full recovery: 99 points in 300 minutes = ~0.33 per minute
+            const ENERGY_RECOVERY_PER_MIN = 99 / 300;  // ~0.33 (5 hours to recover)
+            const ENERGY_DECAY_PER_MIN = 99 / 540;     // ~0.183 (9 hours to decay)
 
             // Calculate decayed values (minimum = 1)
             let newHunger = Math.max(1, Math.round(puff.hunger - (minutesPassed * FULLNESS_DECAY_PER_MIN)));
             let newMood = Math.max(1, Math.round(puff.mood - (minutesPassed * MOOD_DECAY_PER_MIN)));
-            let newEnergy = Math.max(1, Math.round(puff.energy - (minutesPassed * ENERGY_DECAY_PER_MIN)));
+
+            // Energy: recover if sleeping, decay if awake
+            let newEnergy;
+            if (puff.is_sleeping) {
+                // Recover energy during sleep (max 100)
+                newEnergy = Math.min(100, Math.round(puff.energy + (minutesPassed * ENERGY_RECOVERY_PER_MIN)));
+            } else {
+                // Decay energy when awake
+                newEnergy = Math.max(1, Math.round(puff.energy - (minutesPassed * ENERGY_DECAY_PER_MIN)));
+            }
 
             // Only update if values actually changed
             if (newHunger !== puff.hunger || newMood !== puff.mood || newEnergy !== puff.energy) {
-                // Update database with decayed values
+                // Update database with decayed/recovered values
                 const updateResult = await pool.query(
                     `UPDATE puffs
                      SET hunger = $1, mood = $2, energy = $3, updated_at = CURRENT_TIMESTAMP
@@ -189,6 +199,34 @@ router.put('/color', authenticateToken, async (req, res) => {
         res.json(result.rows[0]);
     } catch (err) {
         console.error('Update puff color error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// PUT /api/puffs/sleep - Toggle sleep state
+router.put('/sleep', authenticateToken, async (req, res) => {
+    try {
+        const { isSleeping } = req.body;
+        const userId = req.user.userId;
+
+        // Validate isSleeping
+        if (typeof isSleeping !== 'boolean') {
+            return res.status(400).json({ error: 'isSleeping must be a boolean' });
+        }
+
+        // Update sleep state
+        const result = await pool.query(
+            'UPDATE puffs SET is_sleeping = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 RETURNING *',
+            [isSleeping, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Puff not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('Toggle sleep state error:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
