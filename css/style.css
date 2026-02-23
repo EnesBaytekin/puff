@@ -1177,14 +1177,14 @@ body {
    Sleep Mode
    ============================== */
 
-/* Sleep mode overlay - darkens the screen */
+/* Sleep mode overlay - darkens the screen like lights off */
 .sleep-mode-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.65); /* Increased from 0.4 to 0.65 */
     z-index: 996; /* Below canvas (998) but above background */
     opacity: 0;
     pointer-events: none;
@@ -1195,54 +1195,18 @@ body {
     opacity: 1;
 }
 
-/* Sleep toggle button container */
-.sleep-toggle-container {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border-color);
-    display: flex;
-    justify-content: center;
+/* Sleep button in bottom controls */
+.sleep-btn {
+    position: relative;
 }
 
-.sleep-toggle-btn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 24px;
-    background: var(--button-bg);
-    border: 2px solid var(--button-border);
-    border-radius: 12px;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-color);
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+.sleep-btn.sleeping {
+    background: #4a6fa5 !important;
+    border-color: #3a5f8a !important;
 }
 
-.sleep-toggle-btn:hover {
-    background: var(--button-hover-bg);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
-
-.sleep-toggle-btn:active {
-    background: var(--button-active-bg);
-    transform: translateY(0);
-}
-
-.sleep-toggle-btn.sleeping {
-    background: #4a6fa5;
+.sleep-btn.sleeping .btn-text {
     color: white;
-    border-color: #3a5f8a;
-}
-
-.sleep-icon {
-    font-size: 20px;
-}
-
-.sleep-text {
-    font-size: 15px;
 }
 
 /* Mobile responsive */
