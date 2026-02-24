@@ -39,20 +39,27 @@ Puff state'leri database'e eklendi:
 ```sql
 hunger INTEGER DEFAULT 50 CHECK (hunger >= 1 AND hunger <= 100),
 mood INTEGER DEFAULT 50 CHECK (mood >= 1 AND mood <= 100),
-energy INTEGER DEFAULT 50 CHECK (energy >= 1 AND energy <= 100)
+energy INTEGER DEFAULT 50 CHECK (energy >= 1 AND energy <= 100),
+is_sleeping BOOLEAN DEFAULT FALSE
 ```
+
+**Migration:** `is_sleeping` kolonu otomatik eklenir (eski veriler korunur)
 
 ### 2. API Endpoints ✅
 **Dosya:** `server/routes/puffs.js`
 
 - `POST /api/puffs/create` - Puff oluşturma
-- `GET /api/puffs/mine` - Kullanıcının puff'ını getir (offline decay ile)
+- `GET /api/puffs/mine` - Kullanıcının puff'ını getir (offline decay/recovery ile)
 - `PUT /api/puffs/state` - Puff state güncelleme
+- `PUT /api/puffs/sleep` - Sleep/wake toggle
+- `PUT /api/puffs/color` - Puff rengini güncelleme
 
-**Özellik:** Offline decay calculation - kullanıcı online olmadığında bile state'ler zamanla azalır:
-- Fullness: ~10 saatte 100→1
-- Mood: ~8 saatte 100→1
-- Energy: ~6.5 saatte 100→1
+**Özellik:** Offline decay/recovery calculation - kullanıcı online olmadığında bile:
+- Fullness: 9 saatte 100→1 (her zaman azalır)
+- Mood: 9 saatte 100→1 (her zaman azalır)
+- Energy:
+  - Uyanık: 9 saatte 100→1 (azalır)
+  - Uyku: 5 saatte 1→100 (artar!)
 
 ### 3. Physics & Visual Effects ✅
 **Dosya:** `js/physics/softbody.js`
@@ -79,7 +86,13 @@ energy INTEGER DEFAULT 50 CHECK (energy >= 1 AND energy <= 100)
   - 50+ = normal color
   - Logarithmic scale koyu=80 → light=0
 
-- **Eating Animation:** Yemek yenirken çiğeme animasyonu
+- **Eating Animation:** Yemek yenirken çiğyme animasyonu
+
+- **Sleep Animation:** Uyku modu görsel efektleri
+  - **Kapalı Gözler:** Gözler çizgi şeklinde kapanır (arc)
+  - **Nefes Alma:** Yavaş sine wave ile ±3% boy değişimi (3 saniye period)
+  - **"z" Particle'ları:** 2 saniyede bir yukarı süzülen "z" harfleri
+  - **Breathing Scale:** `breathingScale = 1.0 + Math.sin(time) * 0.03`
 
 **Dosya:** `js/physics/solver.js`
 
@@ -100,22 +113,28 @@ energy INTEGER DEFAULT 50 CHECK (energy >= 1 AND energy <= 100)
 **Özellikler:**
 - **User-specific LocalStorage:** Her kullanıcı için ayrı storage key (`puffState_{userId}`)
 - **Offline Support:** Online/offline detection, pending changes tracking
-- **Client-side Decay Loop:** Her 30 saniyede state decay uygulanır
-- **Fullness → Energy Conversion:** Fullness > 50 ve Energy < 80 iken otomatik dönüşüm
+- **Client-side Decay Loop:** Her 30 saniyede state decay/recovery uygulanır
+- **Sleep State:** `isSleeping` flag'i ile uyku takibi
+- **Energy Recovery (Uyku):** Uyku modunda enerji artar
+- **Fullness → Energy Conversion:** Sadece uyanıkken, fullness > energy iken
 - **Immediate Server Sync:** State değişiklikleri anında server'a gönderilir
 - **Integer Clamping:** Tüm değerler Math.round() ile integer'a çevrilir
 
-**Decay Rates (per minute):**
+**Decay/Recovery Rates (per minute):**
 ```javascript
-FULLNESS_DECAY_PER_MIN = 99 / 600  // ~0.165 (10 hours to minimum)
-MOOD_DECAY_PER_MIN = 99 / 480      // ~0.206 (8 hours to minimum)
-ENERGY_DECAY_PER_MIN = 99 / 390     // ~0.254 (6.5 hours to minimum)
+FULLNESS_DECAY_PER_MIN = 99 / 540   // ~0.183 (9 hours)
+MOOD_DECAY_PER_MIN = 99 / 540       // ~0.183 (9 hours)
+ENERGY_RECOVERY_PER_MIN = 99 / 300  // ~0.33 (5 hours - uyku modunda)
+ENERGY_DECAY_PER_MIN = 99 / 540     // ~0.183 (9 hours - uyanık modda)
 ```
 
 **State Conversion:**
 ```javascript
-// Fullness → Energy (when fullness > 50 and energy < 80)
-conversionAmount = 2; // 2 fullness → 1 energy per minute
+// Fullness → Energy (SADECE uyanıkken, fullness > energy iken)
+conversionRate = 3; // 3 points per minute
+
+// Uyku modunda: Energy artar, Mood/Fullness azalır
+// Uyanık modda: Energy azalır, Mood/Fullness azalır
 ```
 
 ### 6. Food System ✅
@@ -165,12 +184,16 @@ conversionAmount = 2; // 2 fullness → 1 energy per minute
 - **Control Buttons:** Touch-optimized, responsive butonlar
 - **Progress Bars:** Read-only progress bars (Fullness, Mood, Energy)
 - **Panel Management:** Tek panel açık, diğerini otomatik kapatır
-- **Z-index Hierarchy:** Controls (100) < Overlay (998) < Panels (999)
+- **Z-index Hierarchy:** Controls (10001) < Overlay (998) < Sleep Overlay (999) < Panels (999)
 - **Mobile Responsive:** Mobilde buton textleri gizlenir
+- **Sleep Mode Overlay:** Ekran kararma efekti (rgba(0,0,0,0.45))
 
 **Button Layout:**
 - **Top-Right:** 🚪 Logout, ⚙️ Settings (sistem ayarları)
-- **Bottom-Left:** 📊 Status, 🍽️ Food, 🎮 Play (oyunla ilgili butonlar)
+- **Bottom-Left:** 📊 Status, 🍽️ Food, **😴 Sleep**, 🎮 Play
+  - Sleep butonu ile puff uyutulur/uyandırılır
+  - Uyku modunda buton text: "Wake Up"
+  - Butonlar overlay'in üstünde kalır (parlak görünür)
 
 **Progress Bar System:**
 ```html
@@ -273,6 +296,7 @@ body.theme-dark {
 - **Particle Effects:** Hedef tamamlandığında yeşil particle patlaması
 - **Energy→Mood Conversion:** Her hedefte 4-5 energy → 4-5 mood dönüşümü
 - **Desktop/Mobile Input:** Masaüstünde tıklama, mobilde dokunma ile aynı davranış
+- **Sleep Constraint:** Uyku modunda minigame başlatılamaz (alert: "Your puff is sleeping!")
 
 **Minigame Mekaniği:**
 1. Puff'ı it (touch/click)
@@ -295,6 +319,7 @@ body.theme-dark {
 **Yeni Sistem:**
 - **Hunger → Energy:** Fast conversion (5-10 dakikada 20 point)
   - `conversionRate = 3` per minute
+  - **SADECE uyanıkken çalışır** (uyku modunda devre dışı)
   - Sadece hunger > energy iken çalışır
   - Otomatik equalization
 
@@ -303,10 +328,11 @@ body.theme-dark {
   - Her hedefte 4-5 energy → 4-5 mood
   - 1:1 conversion
 
-- **Decay Rate:** Hepsi 9 saatte 100→1
-  - `FULLNESS_DECAY_PER_MIN = 99 / 540`
-  - `MOOD_DECAY_PER_MIN = 99 / 540`
-  - `ENERGY_DECAY_PER_MIN = 99 / 540`
+- **Decay/Recovery Rate:**
+  - `FULLNESS_DECAY_PER_MIN = 99 / 540` (9 saat - her zaman azalır)
+  - `MOOD_DECAY_PER_MIN = 99 / 540` (9 saat - her zaman azalır)
+  - `ENERGY_DECAY_PER_MIN = 99 / 540` (9 saat - uyanık modda azalır)
+  - `ENERGY_RECOVERY_PER_MIN = 99 / 300` (5 saat - uyku modunda artar)
 
 ### 14. Critical Bug Fixes ✅
 **Dosyalar:** `js/stateManager.js`, `js/minigame/`, `js/views/app.js`
@@ -356,9 +382,9 @@ js/
 │   └── particleEffect.js # Particle effects system
 ├── canvas.js            # Canvas management
 ├── input.js             # Touch/mouse handling (minigame-aware)
-├── api.js               # API client, password change endpoint
+├── api.js               # API client, password change, sleep state endpoints
 ├── router.js            # View routing
-├── stateManager.js      # State sync, decay, offline support, conversion
+├── stateManager.js      # State sync, decay/recovery, offline support, sleep state
 ├── food.js              # Food system, drag & drop, effects
 ├── themeManager.js      # Theme management (light/dark/auto)
 ├── globalSettings.js    # Global settings panel (all pages, tab-based)
@@ -379,7 +405,7 @@ server/
 │   └── auth.js          # JWT authentication
 └── routes/
     ├── auth.js          # Login, register, password change endpoints
-    └── puffs.js         # Puff CRUD, state update, offline decay, color update
+    └── puffs.js         # Puff CRUD, state update, offline decay/recovery, color update, sleep toggle
 ```
 
 ---
@@ -389,21 +415,22 @@ server/
 ### Tamamlanan ✅
 1. **Core Physics:** Soft-body creature, realistic interactions
 2. **User System:** Login, register, JWT auth, form clearing
-3. **Database:** PostgreSQL, persistence
+3. **Database:** PostgreSQL, persistence, migration support
 4. **State System:** Fullness, Mood, Energy ile complete state management
-5. **Decay System:** Offline/online decay calculation
+5. **Decay/Recovery System:** Offline/online decay calculation, sleep recovery
 6. **Food System:** 12 yiyecek, drag & drop, effects
-7. **UI System:** Modal panels, progress bars, responsive
+7. **UI System:** Modal panels, progress bars, responsive, sleep overlay
 8. **Theme System:** Dark/light/auto modes, CSS variables
 9. **Settings System:** Tab-based panel (Theme + Password)
 10. **Puff Name Display:** Dynamic font size, ana ekran
 11. **Password Change:** Current password verification ile güvenli değişim
-12. **Deployment:** Docker, versioned releases, nginx config
-13. **Offline Support:** LocalStorage sync, pending changes
+12. **Sleep System:** Uyku/uyandırma, kapalı gözler, nefes alma, "z" particle'ları
+13. **Deployment:** Docker, versioned releases, nginx config
+14. **Offline Support:** LocalStorage sync, pending changes
 
 ### Kısa Vadede Yapılacaklar
 - [x] ~~Mini games (mood artırmak için)~~ ✅ TAMAMLANDI
-- [ ] Resting mechanism (energy artırmak için)
+- [x] ~~Resting mechanism (energy artırmak için)~~ ✅ TAMAMLANDI (Sleep System)
 - [ ] Animation improvements (more eating variations)
 - [ ] Sound effects & music (optional)
 - [ ] Multiple puffs per user
@@ -418,7 +445,39 @@ server/
 
 ## Son Yapılan Değişiklikler (Recent Changes)
 
-### v1.1.2 (2026-02-22) - YENİ ✅
+### v1.1.3 (2026-02-24) - YENİ ✅
+**Dosyalar:** `server/db.js`, `server/routes/puffs.js`, `js/api.js`, `js/stateManager.js`, `js/physics/softbody.js`, `js/views/app.js`, `index.html`, `css/style.css`
+
+**Sleep System (Resting Mechanism):**
+- **Database:** `is_sleeping` kolonu eklendi (otomatik migration ile eski veriler korunur)
+- **Backend API:** `PUT /api/puffs/sleep` endpoint'i eklendi
+- **Energy Recovery:** Uyku modunda enerji 5 saatte 1→100 şeklinde lineer artar
+- **Offline Recovery:** Logout olunduğunda uyku varsa, login olunca aradaki süre kadar enerji artar
+- **Decay Rates Güncellemesi:** Tüm state'ler 9 saatte 100→1 şeklinde normalize edildi
+- **State Conversion:** Fullness→Energy conversion SADECE uyanıkken çalışır
+- **Sleep Animasyonları:**
+  - Kapalı gözler (arc şeklinde çizgi)
+  - Nefes alma (±3% boy değişimi, 3 saniyelik sine wave)
+  - "z" particle'ları (2 saniyede bir yukarı süzülür)
+- **UI Butonu:** Ana ekranda sol altta 😴 Sleep butonu
+- **Sleep Overlay:** Ekran kararma efekti (rgba(0,0,0,0.45))
+- **Z-Index Hierarchy:** Butonlar overlay'in üstünde kalır (parlak görünür)
+- **Minigame Constraint:** Uyku modunda minigame başlatılamaz
+- **LocalStorage Sync:** Sleep state'i localStorage'da da tutulur
+
+**CSS Cache Fix:**
+- CSS linkine versiyon parametresi eklendi: `css/style.css?v=4`
+- Prod'da cache sorunu yaşanıyordu, Cloudflare cache temizlenince düzeldi
+- Artık her CSS değişikliğinde versiyon numarası artırılacak
+
+**Kullanım:**
+1. Ana ekranda sol altta 😴 Sleep butonuna tıkla
+2. Puff uyur: gözleri kapanır, nefes alır, "z" çıkar, ekran kararır
+3. Enerji yavaşça artar (5 saatte full)
+4. Mood ve Fullness normal azalmaya devam eder
+5. Tekrar tıkla → Wake Up ile uyanır
+
+### v1.1.2 (2026-02-22)
 **Dosyalar:** `js/views/app.js`, `js/globalSettings.js`, `index.html`, `css/style.css`, `js/api.js`, `server/routes/auth.js`
 
 **Puff Name Display:**
@@ -485,10 +544,30 @@ docker compose -f docker-compose.dev.yml up -d --build
 docker-compose up -d
 ```
 
+**Cloudflare Tunnel Kullanımı:**
+```yaml
+# docker-compose.override.yml
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=your_token_here
+    networks:
+      - puff-network
+```
+
+**Önemli Not - Cache Management:**
+- Prod ortamında CSS/JS değişikliklerinde **Cloudflare cache temizlemek gerekir**
+- Dashboard: Caching → Configuration → Purge Everything
+- Veya API ile purge edilebilir
+- CSS dosyaları `?v=X` query parametresi ile versiyonlanır
+
 ### Containers
 - `puff-db`: PostgreSQL (port 5432)
 - `puff-server`: Express API (port 3000)
 - `puff-ui`: Nginx static files (port 8080)
+- `cloudflared` (opsiyonel): Cloudflare tunnel (prod)
 
 ### Access
 - App: http://localhost:8080
@@ -511,6 +590,15 @@ docker-compose up -d
 ---
 
 ## Son Güncelleme Tarihi
+
+**2026-02-24 - v1.1.3**
+- **Sleep System:** Uyku/uyandırma mekaniği tamamlandı
+- **Energy Recovery:** Uyku modunda enerji artar (5 saatte full)
+- **Sleep Animasyonlar:** Kapalı gözler, nefes alma, "z" particle'ları
+- **UI Button:** Ana ekranda 😴 Sleep butonu
+- **Screen Darkening:** Sleep overlay (rgba(0,0,0,0.45))
+- **CSS Cache Fix:** Versiyon parametresi eklendi
+- **Decay Rates:** Tüm state'ler normalize edildi (9 saat)
 
 **2026-02-22 - v1.1.2**
 - **Puff Name Display:** Ana ekranda dynamic font size ile isim gösterimi
