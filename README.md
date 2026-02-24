@@ -4,6 +4,16 @@ A calm, satisfying digital companion with realistic physics. Play with it, feed 
 
 ---
 
+<img src="docs/images/puff-sleeping.png" alt="Puff Sleep Mode" width="300" />
+
+<img src="docs/images/choose-color.png" alt="Puff Change Color" width="300" />
+
+<img src="docs/images/food.png" alt="Food" width="300" />
+
+<img src="docs/images/status.png" alt="Status" width="300" />
+
+---
+
 ## ✨ What Can You Do?
 
 **🖐️ Play & Interact**
@@ -28,17 +38,6 @@ A calm, satisfying digital companion with realistic physics. Play with it, feed 
 - Give your puff a unique name
 - Choose its color from soft pastel palette
 - Switch between light/dark themes
-
----
-
-## 📷 Screenshots
-
-<div style="display:flex; flex-direction:column; gap:12px;">
-    <img src="docs/images/puff-sleeping.png" alt="Puff Sleep Mode" style="max-width:300px; width:100%; height:auto;" />
-    <img src="docs/images/choose-color.png" alt="Puff Change Color" style="max-width:300px; width:100%; height:auto;" />
-    <img src="docs/images/food.png" alt="Food" style="max-width:300px; width:100%; height:auto;" />
-    <img src="docs/images/status.png" alt="Food" style="max-width:300px; width:100%; height:auto;" />
-</div>
 
 ---
 
