@@ -2,9 +2,6 @@
 
 A calm, satisfying digital companion with realistic physics. Play with it, feed it, put it to sleep - watch it come alive!
 
-![Puff Screenshot](docs/images/screenshot-main.png)
-*Your adorable puff waiting for you*
-
 ---
 
 ## ✨ What Can You Do?
@@ -34,21 +31,23 @@ A calm, satisfying digital companion with realistic physics. Play with it, feed 
 
 ---
 
-## 🚀 Quick Start
+## 📷 Screenshots
 
-Just copy and paste the commands in [latest release](https://github.com/EnesBaytekin/puff/releases/latest) on linux.
-
-Then checkout http://localhost
-
-That's it!
+<div style="display:flex; flex-direction:column; gap:12px;">
+    <img src="docs/images/puff-sleeping.png" alt="Puff Sleep Mode" style="max-width:300px; width:100%; height:auto;" />
+    <img src="docs/images/choose-color.png" alt="Puff Change Color" style="max-width:300px; width:100%; height:auto;" />
+    <img src="docs/images/food.png" alt="Food" style="max-width:300px; width:100%; height:auto;" />
+    <img src="docs/images/status.png" alt="Food" style="max-width:300px; width:100%; height:auto;" />
+</div>
 
 ---
 
-![Puff Sleep Mode](docs/images/screenshot-sleep.png)
-*Sleep mode with breathing animation*
+## 🚀 Quick Start
 
-![Puff Being Fed](docs/images/screenshot-feeding.png)
-*Drag & drop feeding*
+- Just copy and paste the commands in [latest release](https://github.com/EnesBaytekin/puff/releases/latest) on linux.
+- Then checkout http://localhost
+
+That's it!
 
 ---
 
