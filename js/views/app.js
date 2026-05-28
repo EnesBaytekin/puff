@@ -549,6 +549,11 @@ const AppView = {
                 if (this.roomManager && this.roomManager.isInRoom()) {
                     this.roomManager.update();
                     this.roomManager.render(this.canvas.getContext());
+                    // Safety: ensure room mode UI is active every frame
+                    if (!this.roomManager.isRoomModeActive()) {
+                        console.log('[App] Room mode UI not active, re-entering');
+                        this.roomManager.enterRoomMode();
+                    }
                 }
             }
 
