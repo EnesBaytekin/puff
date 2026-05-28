@@ -408,6 +408,42 @@ class RoomManager {
         });
     }
 
+    // Called each frame to render local puff's name tag (on top of everything)
+    renderLocalName(ctx) {
+        const creature = this.appView.creature;
+        if (!creature || !creature.displayName) return;
+
+        const nx = creature.centerParticle.x;
+        const ny = creature.centerParticle.y - creature.radius * 1.4;
+
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+
+        // Name background (same style as remote)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+        ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, sans-serif';
+        const metrics = ctx.measureText(creature.displayName || this.appView.puffName);
+        const padding = 10;
+        const bw = metrics.width + padding * 2;
+        const bh = 28;
+        const bx = nx - bw / 2;
+        const by = ny - bh;
+
+        if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(bx, by, bw, bh, 8);
+            ctx.fill();
+        } else {
+            ctx.fillRect(bx, by, bw, bh);
+        }
+
+        // Name text — bright gold color to distinguish self
+        ctx.fillStyle = '#ffd700';
+        ctx.fillText(creature.displayName || this.appView.puffName, nx, ny - 4);
+        ctx.restore();
+    }
+
     updateRoomUI() {
         const roomPanel = document.getElementById('room-panel');
         const roomUsersList = document.getElementById('room-users-list');

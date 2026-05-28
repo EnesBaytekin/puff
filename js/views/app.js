@@ -31,7 +31,7 @@ const AppView = {
         // Create creature with custom color and state
         const centerX = this.canvas.getWidth() / 2;
         const centerY = this.canvas.getHeight() / 2;
-        const radius = Math.min(this.canvas.getWidth(), this.canvas.getHeight()) * 0.15;
+        const radius = Math.min(this.canvas.getWidth(), this.canvas.getHeight()) * 0.12;
 
         // Extract puff state or use defaults (handle null values)
         const puffState = {
@@ -41,6 +41,7 @@ const AppView = {
         };
 
         this.creature = new SoftBody(centerX, centerY, radius, 20, puffData.color, puffState);
+        this.creature.displayName = puffData.name || 'Puff';
 
         // Initialize physics solver
         this.physicsSolver = new PhysicsSolver(
@@ -542,10 +543,7 @@ const AppView = {
                 // Clear canvas
                 this.canvas.clear();
 
-                // Draw creature
-                this.creature.draw(this.canvas.getContext());
-
-                // Update and draw remote puffs if in a room
+                // Update and draw remote puffs first (behind local puff)
                 if (this.roomManager && this.roomManager.isInRoom()) {
                     this.roomManager.update();
                     this.roomManager.render(this.canvas.getContext());
@@ -554,6 +552,14 @@ const AppView = {
                         console.log('[App] Room mode UI not active, re-entering');
                         this.roomManager.enterRoomMode();
                     }
+
+                    // Draw local puff ON TOP of remote puffs
+                    this.creature.draw(this.canvas.getContext());
+                    // Draw local name tag on top of everything
+                    this.roomManager.renderLocalName(this.canvas.getContext());
+                } else {
+                    // Normal: draw local puff directly
+                    this.creature.draw(this.canvas.getContext());
                 }
             }
 
