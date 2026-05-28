@@ -12,6 +12,7 @@ class RoomManager {
         this.lastSentData = null;
         this.sendThrottle = 30; // ms between sends
         this.reconnectRoom = null; // Room to re-join on socket reconnect
+        this.currentReaction = null; // Current reaction/activity emoji (null or emoji string)
     }
 
     connect() {
@@ -47,7 +48,8 @@ class RoomManager {
                                 mood: creature.puffState.mood,
                                 energy: creature.puffState.energy
                             },
-                            isSleeping: creature.isSleeping || false
+                            isSleeping: creature.isSleeping || false,
+                            reaction: this.currentReaction
                         }
                     });
                 }
@@ -114,6 +116,7 @@ class RoomManager {
                 puff.remoteTargetY = data.y;
                 puff.remoteTargetState = data.state || null;
                 puff.remoteTargetSleeping = data.isSleeping;
+                puff.remoteReaction = data.reaction || null;
 
                 // Update user data for name display
                 const userData = this.remoteUsers.get(data.userId);
@@ -152,7 +155,8 @@ class RoomManager {
                 mood: creature.puffState.mood,
                 energy: creature.puffState.energy
             },
-            isSleeping: creature.isSleeping || false
+            isSleeping: creature.isSleeping || false,
+            reaction: this.currentReaction
         };
 
         this.socket.emit('join_room', {
@@ -212,6 +216,12 @@ class RoomManager {
         // Disable sleep overlay visual during room mode (but keep sleep state)
         const sleepOverlay = document.getElementById('sleep-overlay');
         if (sleepOverlay) sleepOverlay.style.display = 'none';
+
+        // Show reaction buttons
+        const reactionBar = document.getElementById('room-mode-reactions');
+        if (reactionBar) reactionBar.classList.add('active');
+        this.setupReactionButtons();
+        this.updateReactionButtonUI();
         console.log('[Room] Room mode fully activated');
     }
 
@@ -238,6 +248,10 @@ class RoomManager {
         // Restore sleep overlay if sleeping
         const sleepOverlay = document.getElementById('sleep-overlay');
         if (sleepOverlay) sleepOverlay.style.display = '';
+
+        // Hide reaction buttons
+        const reactionBar = document.getElementById('room-mode-reactions');
+        if (reactionBar) reactionBar.classList.remove('active');
     }
 
     leaveRoom() {
@@ -252,6 +266,7 @@ class RoomManager {
         this.remotePuffs.clear();
         this.remoteUsers.clear();
         this.currentRoom = null;
+        this.currentReaction = null;
 
         // Exit room mode
         this.exitRoomMode();
@@ -288,11 +303,12 @@ class RoomManager {
                 mood: creature.puffState.mood,
                 energy: creature.puffState.energy
             },
-            isSleeping: creature.isSleeping || false
+            isSleeping: creature.isSleeping || false,
+            reaction: this.currentReaction
         };
 
         // Throttle: only send if data changed meaningfully
-        const dataKey = `${data.x},${data.y},${data.isSleeping}`;
+        const dataKey = `${data.x},${data.y},${data.isSleeping},${data.reaction}`;
         if (dataKey !== this.lastSentData) {
             this.socket.emit('puff_update', data);
             this.lastSentData = dataKey;
@@ -320,6 +336,7 @@ class RoomManager {
         puff.remoteTargetY = puffData.y || canvas.getHeight() / 2;
         puff.remoteTargetState = puffData.state || null;
         puff.remoteTargetSleeping = puffData.isSleeping || false;
+        puff.remoteReaction = puffData.reaction || null;
         puff.displayName = puffData.name || 'Puff';
 
         this.remotePuffs.set(userId, puff);
@@ -336,6 +353,7 @@ class RoomManager {
         this.remotePuffs.clear();
         this.remoteUsers.clear();
         this.currentRoom = null;
+        this.currentReaction = null;
         this.exitRoomMode();
         this.updateRoomUI();
     }
@@ -404,6 +422,16 @@ class RoomManager {
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText(puff.displayName, nx, ny - 4);
                 ctx.restore();
+
+                // Draw reaction indicator above name tag
+                if (puff.remoteReaction) {
+                    ctx.save();
+                    ctx.font = '20px -apple-system, BlinkMacSystemFont, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText(puff.remoteReaction, nx, ny - bh - 4);
+                    ctx.restore();
+                }
             }
         });
     }
@@ -442,6 +470,16 @@ class RoomManager {
         ctx.fillStyle = '#ffd700';
         ctx.fillText(creature.displayName || this.appView.puffName, nx, ny - 4);
         ctx.restore();
+
+        // Draw reaction indicator above name tag
+        if (this.currentReaction) {
+            ctx.save();
+            ctx.font = '20px -apple-system, BlinkMacSystemFont, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(this.currentReaction, nx, ny - bh - 4);
+            ctx.restore();
+        }
     }
 
     updateRoomUI() {
@@ -506,6 +544,43 @@ class RoomManager {
     isRoomModeActive() {
         const roomUi = document.getElementById('room-mode-ui');
         return roomUi && roomUi.classList.contains('active');
+    }
+
+    // Set or toggle a reaction emoji (null to clear)
+    setReaction(emoji) {
+        if (this.currentReaction === emoji) {
+            this.currentReaction = null; // Toggle off
+        } else {
+            this.currentReaction = emoji; // Toggle on
+        }
+        this.updateReactionButtonUI();
+    }
+
+    // Update active state on reaction buttons
+    updateReactionButtonUI() {
+        const buttons = document.querySelectorAll('.reaction-btn');
+        buttons.forEach(btn => {
+            if (btn.dataset.reaction === this.currentReaction) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    // Set up reaction button click handlers (runs once)
+    setupReactionButtons() {
+        const container = document.getElementById('room-mode-reactions');
+        if (!container || container.dataset.reactionsInitialized) return;
+        container.dataset.reactionsInitialized = 'true';
+
+        container.addEventListener('click', (e) => {
+            const btn = e.target.closest('.reaction-btn');
+            if (!btn) return;
+            this.setReaction(btn.dataset.reaction);
+            // Force send puff update immediately so reaction syncs right away
+            this.sendPuffUpdate();
+        });
     }
 
     cleanup() {

@@ -1493,4 +1493,72 @@ body.theme-dark .room-leave-btn {
     .room-mode-exit-btn .btn-text {
         display: none;
     }
+    .room-mode-reactions {
+        bottom: 16px;
+        left: 10px;
+        gap: 6px;
+    }
+    .reaction-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+}
+
+/* ==============================
+   Room Mode Reactions Bar
+   ============================== */
+
+.room-mode-reactions {
+    position: fixed;
+    bottom: 24px;
+    left: 20px;
+    z-index: 1002;
+    display: flex;
+    gap: 8px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateY(10px);
+}
+
+.room-mode-reactions.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateY(0);
+}
+
+.reaction-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    background: var(--button-bg);
+    font-size: 22px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.reaction-btn:hover {
+    transform: scale(1.15);
+    background: var(--button-hover-bg);
+}
+
+.reaction-btn:active {
+    transform: scale(0.95);
+}
+
+.reaction-btn.active {
+    background: var(--button-hover-bg);
+    border-color: #ffd700;
+    transform: scale(1.1);
+    box-shadow: 0 0 14px rgba(255, 215, 0, 0.5);
 }
