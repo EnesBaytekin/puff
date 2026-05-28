@@ -155,9 +155,10 @@ const GlobalSettings = {
     },
 
     openSettingsPanel() {
-        // Close status and food panels first (only in app view)
+        // Close other panels first (only in app view)
         this.closeStatusPanel();
         this.closeFoodPanel();
+        this.closeRoomPanel();
 
         const overlay = document.getElementById('settings-overlay');
         const panel = document.getElementById('settings-panel');
@@ -209,6 +210,16 @@ const GlobalSettings = {
         const toggleBtn = document.getElementById('food-toggle-btn');
         const overlay = document.getElementById('food-overlay');
         const panel = document.getElementById('food-panel');
+
+        if (toggleBtn) toggleBtn.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
+        if (panel) panel.classList.remove('active');
+    },
+
+    closeRoomPanel() {
+        const toggleBtn = document.getElementById('room-toggle-btn');
+        const overlay = document.getElementById('room-overlay');
+        const panel = document.getElementById('room-panel');
 
         if (toggleBtn) toggleBtn.classList.remove('active');
         if (overlay) overlay.classList.remove('active');

@@ -604,9 +604,10 @@ class FoodDragHandler {
     }
 
     openFoodPanel() {
-        // Close status panel and settings panel first
+        // Close other panels first
         this.closeStatusPanel();
         this.closeSettingsPanel();
+        this.closeRoomPanel();
 
         this.foodPanelOpen = true;
         const toggleBtn = document.getElementById('food-toggle-btn');
@@ -627,5 +628,15 @@ class FoodDragHandler {
         if (overlay) overlay.classList.remove('active');
         if (panel) panel.classList.remove('active');
         buttons.forEach(btn => btn.classList.remove('active'));
+    }
+
+    closeRoomPanel() {
+        const toggleBtn = document.getElementById('room-toggle-btn');
+        const overlay = document.getElementById('room-overlay');
+        const panel = document.getElementById('room-panel');
+
+        if (toggleBtn) toggleBtn.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
+        if (panel) panel.classList.remove('active');
     }
 }

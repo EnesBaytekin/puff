@@ -7,13 +7,20 @@ const AppView = {
     foodDragHandler: null,
     stateManager: null,
     minigameManager: null,
+    roomManager: null,
     animationFrameId: null,
     isPanelOpen: false,
     lastFrameTime: 0,
+    puffName: '',
+    puffColor: '#ffd6cc',
 
     init(puffData) {
         // Clean up previous instance if exists
         this.cleanup();
+
+        // Store puff info
+        this.puffName = puffData.name || 'Puff';
+        this.puffColor = puffData.color || '#ffd6cc';
 
         // Display puff name
         this.displayPuffName(puffData.name);
@@ -107,6 +114,13 @@ const AppView = {
         // Setup sleep toggle
         this.setupSleepToggle();
 
+        // Initialize room manager and connect
+        this.roomManager = new RoomManager(this);
+        this.roomManager.connect();
+
+        // Setup room panel
+        this.setupRoomPanel();
+
         // Initialize food drag handler (after status panel setup)
         this.foodDragHandler = new FoodDragHandler(this);
 
@@ -192,9 +206,10 @@ const AppView = {
     },
 
     openStatusPanel() {
-        // Close food panel and settings panel first
+        // Close other panels first
         this.closeFoodPanel();
         this.closeSettingsPanel();
+        this.closeRoomPanel();
 
         const toggleBtn = document.getElementById('status-toggle-btn');
         const overlay = document.getElementById('status-overlay');
@@ -251,10 +266,112 @@ const AppView = {
         }
     },
 
+    setupRoomPanel() {
+        const toggleBtn = document.getElementById('room-toggle-btn');
+        const roomOverlay = document.getElementById('room-overlay');
+        const roomPanel = document.getElementById('room-panel');
+        const joinBtn = document.getElementById('room-join-btn');
+        const leaveBtn = document.getElementById('room-leave-btn');
+        const roomNameInput = document.getElementById('room-name-input');
+
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => {
+                this.openRoomPanel();
+            });
+        }
+
+        if (roomOverlay) {
+            roomOverlay.addEventListener('click', () => {
+                this.closeRoomPanel();
+            });
+        }
+
+        // Close button
+        const closeBtn = roomPanel ? roomPanel.querySelector('.close-btn') : null;
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => {
+                this.closeRoomPanel();
+            });
+        }
+
+        // Join room
+        if (joinBtn && roomNameInput) {
+            joinBtn.addEventListener('click', () => {
+                const name = roomNameInput.value.trim();
+                if (!name) {
+                    alert('Please enter a room name');
+                    return;
+                }
+                // Prevent joining room while sleeping
+                if (this.stateManager && this.stateManager.isSleeping) {
+                    alert('Your puff is sleeping! Wake them up first.');
+                    return;
+                }
+                // Prevent joining room during minigame
+                if (this.minigameManager && this.minigameManager.isGameActive()) {
+                    alert('Exit the minigame first!');
+                    return;
+                }
+                this.roomManager.joinRoom(name);
+            });
+
+            // Allow Enter key to join
+            roomNameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    joinBtn.click();
+                }
+            });
+        }
+
+        // Leave room
+        if (leaveBtn) {
+            leaveBtn.addEventListener('click', () => {
+                this.roomManager.leaveRoom();
+            });
+        }
+    },
+
+    openRoomPanel() {
+        this.closeStatusPanel();
+        this.closeFoodPanel();
+        this.closeSettingsPanel();
+
+        const toggleBtn = document.getElementById('room-toggle-btn');
+        const overlay = document.getElementById('room-overlay');
+        const panel = document.getElementById('room-panel');
+
+        if (toggleBtn) toggleBtn.classList.add('active');
+        if (overlay) overlay.classList.add('active');
+        if (panel) panel.classList.add('active');
+        this.isPanelOpen = true;
+
+        // Refresh room UI
+        if (this.roomManager) {
+            this.roomManager.updateRoomUI();
+        }
+    },
+
+    closeRoomPanel() {
+        const toggleBtn = document.getElementById('room-toggle-btn');
+        const overlay = document.getElementById('room-overlay');
+        const panel = document.getElementById('room-panel');
+
+        if (toggleBtn) toggleBtn.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
+        if (panel) panel.classList.remove('active');
+        this.isPanelOpen = false;
+    },
+
     startMinigame() {
         // Prevent starting minigame while sleeping
         if (this.stateManager && this.stateManager.isSleeping) {
             alert('Your puff is sleeping! Wake them up first.');
+            return;
+        }
+
+        // Prevent starting minigame while in a room
+        if (this.roomManager && this.roomManager.isInRoom()) {
+            alert('Leave the room first before playing!');
             return;
         }
 
@@ -412,6 +529,12 @@ const AppView = {
 
                 // Draw creature
                 this.creature.draw(this.canvas.getContext());
+
+                // Update and draw remote puffs if in a room
+                if (this.roomManager && this.roomManager.isInRoom()) {
+                    this.roomManager.update();
+                    this.roomManager.render(this.canvas.getContext());
+                }
             }
 
             // Request next frame
@@ -437,6 +560,12 @@ const AppView = {
         if (this.stateManager) {
             this.stateManager.cleanup();
             this.stateManager = null;
+        }
+
+        // Cleanup room manager
+        if (this.roomManager) {
+            this.roomManager.cleanup();
+            this.roomManager = null;
         }
 
         // Close panels

@@ -1,6 +1,8 @@
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const { initDB } = require('./db');
+const { setupSocket } = require('./socket');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -16,11 +18,15 @@ app.use(express.static(__dirname + '/..'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/puffs', require('./routes/puffs'));
 
+// Create HTTP server and attach Socket.IO
+const server = http.createServer(app);
+setupSocket(server);
+
 // Initialize database and start server
 async function start() {
     try {
         await initDB();
-        app.listen(port, () => {
+        server.listen(port, () => {
             console.log(`Server running on http://localhost:${port}`);
         });
     } catch (err) {
