@@ -11,6 +11,7 @@ class RoomManager {
         this.connected = false;
         this.lastSentData = null;
         this.sendThrottle = 30; // ms between sends
+        this.reconnectRoom = null; // Room to re-join on socket reconnect
     }
 
     connect() {
@@ -26,11 +27,38 @@ class RoomManager {
         this.socket.on('connect', () => {
             console.log('[Room] Socket connected');
             this.connected = true;
+            // Re-join room after socket reconnect
+            if (this.reconnectRoom) {
+                const roomName = this.reconnectRoom;
+                this.reconnectRoom = null; // Clear backup, will be re-set by room_joined
+                console.log('[Room] Re-joining room after reconnect:', roomName);
+                const creature = this.appView.creature;
+                if (creature) {
+                    this.socket.emit('join_room', {
+                        roomName,
+                        userId: API.getUserId(),
+                        puffData: {
+                            x: creature.centerParticle.x,
+                            y: creature.centerParticle.y,
+                            color: creature.baseColor,
+                            name: this.appView.puffName || 'Puff',
+                            state: {
+                                hunger: creature.puffState.hunger,
+                                mood: creature.puffState.mood,
+                                energy: creature.puffState.energy
+                            },
+                            isSleeping: creature.isSleeping || false
+                        }
+                    });
+                }
+            }
         });
 
         this.socket.on('disconnect', () => {
             console.log('[Room] Socket disconnected');
             this.connected = false;
+            // Save room name before cleanup so we can re-join on reconnect
+            this.reconnectRoom = this.currentRoom;
             this.handleDisconnect();
         });
 
@@ -46,6 +74,9 @@ class RoomManager {
             // Update UI
             this.updateRoomUI();
             this.startSendingPosition();
+
+            // Enter room mode (dedicated view like minigame)
+            this.enterRoomMode();
         });
 
         this.socket.on('room_error', (data) => {
@@ -62,6 +93,10 @@ class RoomManager {
             console.log('[Room] User joined:', data.userId, data.puffData);
             this.addRemotePuff(data.userId, data.puffData);
             this.updateRoomUI();
+            // Ensure room mode is active (safety net for missed room_joined)
+            if (!this.isRoomModeActive()) {
+                this.enterRoomMode();
+            }
         });
 
         this.socket.on('user_left', (data) => {
@@ -126,6 +161,66 @@ class RoomManager {
         });
     }
 
+    enterRoomMode() {
+        // Set physics solver to room mode (no centering, wall bounce)
+        if (this.appView.physicsSolver) {
+            this.appView.physicsSolver.setRoomMode(true);
+        }
+
+        // Hide normal controls
+        const topControls = document.querySelector('.top-controls');
+        const bottomControls = document.querySelector('.bottom-controls');
+        const puffName = document.querySelector('.puff-name-container');
+        if (topControls) topControls.style.display = 'none';
+        if (bottomControls) bottomControls.style.display = 'none';
+        if (puffName) puffName.style.display = 'none';
+
+        // Show room mode UI
+        const roomUi = document.getElementById('room-mode-ui');
+        const roomOverlay = document.getElementById('room-mode-overlay');
+        const roomNameLabel = document.getElementById('room-mode-name');
+        if (roomNameLabel && this.currentRoom) {
+            roomNameLabel.textContent = this.currentRoom;
+        }
+        if (roomUi) roomUi.classList.add('active');
+        if (roomOverlay) roomOverlay.classList.add('active');
+
+        // Close any open panels
+        this.appView.closeRoomPanel();
+        this.appView.closeStatusPanel();
+        if (this.appView.foodDragHandler) this.appView.foodDragHandler.closeFoodPanel();
+        this.appView.closeSettingsPanel();
+
+        // Disable sleep overlay visual during room mode (but keep sleep state)
+        const sleepOverlay = document.getElementById('sleep-overlay');
+        if (sleepOverlay) sleepOverlay.style.display = 'none';
+    }
+
+    exitRoomMode() {
+        // Restore physics solver
+        if (this.appView.physicsSolver) {
+            this.appView.physicsSolver.setRoomMode(false);
+        }
+
+        // Show normal controls
+        const topControls = document.querySelector('.top-controls');
+        const bottomControls = document.querySelector('.bottom-controls');
+        const puffName = document.querySelector('.puff-name-container');
+        if (topControls) topControls.style.display = '';
+        if (bottomControls) bottomControls.style.display = '';
+        if (puffName) puffName.style.display = '';
+
+        // Hide room mode UI
+        const roomUi = document.getElementById('room-mode-ui');
+        const roomOverlay = document.getElementById('room-mode-overlay');
+        if (roomUi) roomUi.classList.remove('active');
+        if (roomOverlay) roomOverlay.classList.remove('active');
+
+        // Restore sleep overlay if sleeping
+        const sleepOverlay = document.getElementById('sleep-overlay');
+        if (sleepOverlay) sleepOverlay.style.display = '';
+    }
+
     leaveRoom() {
         this.stopSendingPosition();
 
@@ -134,12 +229,12 @@ class RoomManager {
         }
 
         // Remove all remote puffs
-        this.remotePuffs.forEach((puff) => {
-            // Clean up any resources
-        });
         this.remotePuffs.clear();
         this.remoteUsers.clear();
         this.currentRoom = null;
+
+        // Exit room mode
+        this.exitRoomMode();
 
         // Update UI
         this.updateRoomUI();
@@ -221,6 +316,7 @@ class RoomManager {
         this.remotePuffs.clear();
         this.remoteUsers.clear();
         this.currentRoom = null;
+        this.exitRoomMode();
         this.updateRoomUI();
     }
 
@@ -347,6 +443,13 @@ class RoomManager {
 
     isInRoom() {
         return this.currentRoom !== null;
+    }
+
+    // Check if the actual room mode UI is active (may differ from isInRoom
+    // if there was a rendering issue or missed event)
+    isRoomModeActive() {
+        const roomUi = document.getElementById('room-mode-ui');
+        return roomUi && roomUi.classList.contains('active');
     }
 
     cleanup() {

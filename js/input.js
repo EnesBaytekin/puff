@@ -31,6 +31,20 @@ class InputHandler {
         return this.minigameManager && this.minigameManager.isGameActive();
     }
 
+    /**
+     * Check if room mode is active
+     */
+    isRoomMode() {
+        return this.appView && this.appView.roomManager && this.appView.roomManager.isInRoom();
+    }
+
+    /**
+     * Set app view reference (for room mode detection)
+     */
+    setAppView(appView) {
+        this.appView = appView;
+    }
+
     // Get position from mouse event
     getMousePosition(event) {
         const rect = this.canvas.canvas.getBoundingClientRect();
@@ -58,6 +72,12 @@ class InputHandler {
             return;
         }
 
+        // Room mode: apply push impulse instead of drag
+        if (this.isRoomMode()) {
+            this.physicsSolver.applyPushImpulse(this.softBody, x, y);
+            return;
+        }
+
         this.physicsSolver.markInteraction(); // Mark that user interacted
         this.draggedParticle = this.softBody.findNearestParticle(x, y);
         if (this.draggedParticle) {
@@ -70,9 +90,13 @@ class InputHandler {
     // Continue dragging (store position for continuous application)
     drag(x, y, identifier = 'mouse') {
         // During minigame, don't forward any motion events
-        // Only the initial touch/click matters (handled in startDrag)
         if (this.isMinigameActive()) {
-            return; // No motion-based pushing in minigame
+            return;
+        }
+
+        // Room mode: no drag (only initial impulse)
+        if (this.isRoomMode()) {
+            return;
         }
 
         if (this.isDragging) {
@@ -83,10 +107,9 @@ class InputHandler {
     }
 
     // Apply continuous drag force (called every frame while holding)
-    // Energy affects how quickly the puff follows the finger (dramatically)
     continuousDrag() {
-        // Don't apply normal drag during minigame
-        if (this.isMinigameActive()) {
+        // Don't apply normal drag during minigame or room mode
+        if (this.isMinigameActive() || this.isRoomMode()) {
             return;
         }
 

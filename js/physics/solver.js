@@ -7,6 +7,7 @@ class PhysicsSolver {
         this.damping = damping; // Air resistance
         this.iterations = iterations; // Constraint iterations per frame
         this.lastInteractionTime = Date.now();
+        this.roomMode = false; // Room mode flag (no centering, wall bounce)
 
         // Idle behavior state
         this.idleDelay = 10000; // Wait 10 seconds before starting idle
@@ -129,59 +130,84 @@ class PhysicsSolver {
             }
         }
 
-        // Apply gentle centering force + idle movement
-        for (const particle of particles) {
-            const dx = centerX - particle.x;
-            const dy = centerY - particle.y;
-
-            // Gentle spring force toward center
-            // When idling, use even weaker force (handled by dynamicCenteringStrength being energy-based)
-            // Low energy = very weak centering (sluggish), high energy = normal
-            const centeringStrength = isIdling ? dynamicCenteringStrength * 0.3 : dynamicCenteringStrength;
-            particle.applyForce(dx * centeringStrength, dy * centeringStrength);
-
-            // Apply idle movement force (low energy = barely moves)
-            particle.applyForce(idleForceX * particle.mass * 0.1, idleForceY * particle.mass * 0.1);
-
-            // Extra damping for low energy - proportional to energy, no threshold
-            // Applied when returning to center after drag (not idling)
-            if (!isIdling && extraDampingFactor > 0.001) {
-                const velX = particle.getVelocityX();
-                const velY = particle.getVelocityY();
-                // Apply extra damping proportional to low energy
-                particle.oldX = particle.x - velX * (1 - extraDampingFactor);
-                particle.oldY = particle.y - velY * (1 - extraDampingFactor);
-            }
-        }
-
-        // Update particle positions (Verlet integration)
-        for (const particle of particles) {
-            particle.update();
-
-            // Apply dynamic damping based on energy
-            const vx = particle.getVelocityX();
-            const vy = particle.getVelocityY();
-
-            particle.oldX = particle.x - vx * dynamicDamping;
-            particle.oldY = particle.y - vy * dynamicDamping;
-        }
-
-        // Satisfy constraints multiple times for stability
-        for (let i = 0; i < this.iterations; i++) {
-            for (const constraint of constraints) {
-                constraint.satisfy();
-            }
-
-            // Keep particles on screen
+        if (this.roomMode) {
+            // Room mode: no centering force, higher damping, wall bouncing
             for (const particle of particles) {
-                this.constrainToBounds(particle, canvasWidth, canvasHeight);
+                // Apply idle force if any
+                particle.applyForce(idleForceX * particle.mass * 0.1, idleForceY * particle.mass * 0.1);
+            }
+
+            // Update particle positions (Verlet integration)
+            for (const particle of particles) {
+                particle.update();
+
+                // Moderate damping for room mode
+                const vx = particle.getVelocityX();
+                const vy = particle.getVelocityY();
+                particle.oldX = particle.x - vx * 0.975;
+                particle.oldY = particle.y - vy * 0.975;
+            }
+
+            // Satisfy constraints
+            for (let i = 0; i < this.iterations; i++) {
+                for (const constraint of constraints) {
+                    constraint.satisfy();
+                }
+                // Wall bounce instead of clamp
+                for (const particle of particles) {
+                    this.bounceToBounds(particle, canvasWidth, canvasHeight);
+                }
+            }
+        } else {
+            // Normal mode: centering force + idle movement
+            for (const particle of particles) {
+                const dx = centerX - particle.x;
+                const dy = centerY - particle.y;
+
+                // Gentle spring force toward center
+                const centeringStrength = isIdling ? dynamicCenteringStrength * 0.3 : dynamicCenteringStrength;
+                particle.applyForce(dx * centeringStrength, dy * centeringStrength);
+
+                // Apply idle movement force
+                particle.applyForce(idleForceX * particle.mass * 0.1, idleForceY * particle.mass * 0.1);
+
+                // Extra damping for low energy
+                if (!isIdling && extraDampingFactor > 0.001) {
+                    const velX = particle.getVelocityX();
+                    const velY = particle.getVelocityY();
+                    particle.oldX = particle.x - velX * (1 - extraDampingFactor);
+                    particle.oldY = particle.y - velY * (1 - extraDampingFactor);
+                }
+            }
+
+            // Update particle positions (Verlet integration)
+            for (const particle of particles) {
+                particle.update();
+
+                const vx = particle.getVelocityX();
+                const vy = particle.getVelocityY();
+
+                particle.oldX = particle.x - vx * dynamicDamping;
+                particle.oldY = particle.y - vy * dynamicDamping;
+            }
+
+            // Satisfy constraints
+            for (let i = 0; i < this.iterations; i++) {
+                for (const constraint of constraints) {
+                    constraint.satisfy();
+                }
+
+                // Keep particles on screen
+                for (const particle of particles) {
+                    this.constrainToBounds(particle, canvasWidth, canvasHeight);
+                }
             }
         }
     }
 
-    // Keep particle within canvas bounds
+    // Keep particle within canvas bounds (normal mode - clamp)
     constrainToBounds(particle, width, height) {
-        const margin = 20; // Keep creature away from edges
+        const margin = 20;
 
         if (particle.x < margin) {
             particle.x = margin;
@@ -194,6 +220,64 @@ class PhysicsSolver {
         } else if (particle.y > height - margin) {
             particle.y = height - margin;
         }
+    }
+
+    // Wall bouncing for room mode
+    bounceToBounds(particle, width, height) {
+        const margin = 20;
+        const bounce = 0.7;
+
+        if (particle.x < margin) {
+            particle.x = margin + (margin - particle.x);
+            const velX = particle.getVelocityX();
+            particle.oldX = particle.x + velX * bounce;
+        } else if (particle.x > width - margin) {
+            particle.x = (width - margin) - (particle.x - (width - margin));
+            const velX = particle.getVelocityX();
+            particle.oldX = particle.x - velX * bounce;
+        }
+
+        if (particle.y < margin) {
+            particle.y = margin + (margin - particle.y);
+            const velY = particle.getVelocityY();
+            particle.oldY = particle.y + velY * bounce;
+        } else if (particle.y > height - margin) {
+            particle.y = (height - margin) - (particle.y - (height - margin));
+            const velY = particle.getVelocityY();
+            particle.oldY = particle.y - velY * bounce;
+        }
+    }
+
+    // Apply push impulse for room mode
+    applyPushImpulse(softBody, targetX, targetY) {
+        const center = softBody.centerParticle;
+        const dx = targetX - center.x;
+        const dy = targetY - center.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < 5) return; // Too close, ignore
+
+        // Normalize and scale: closer = stronger push
+        const maxDist = 500;
+        const normalizedDist = Math.min(dist / maxDist, 1);
+        const forceMag = (1 - normalizedDist * 0.7) * 6;
+
+        const nx = (dx / dist) * forceMag;
+        const ny = (dy / dist) * forceMag;
+
+        // Apply to all particles for a cohesive push
+        const particles = softBody.getParticles();
+        for (const p of particles) {
+            p.oldX = p.x - nx;
+            p.oldY = p.y - ny;
+        }
+
+        this.markInteraction();
+    }
+
+    // Set room mode
+    setRoomMode(enabled) {
+        this.roomMode = enabled;
     }
 
     // Apply drag force to a particle (for user interaction)

@@ -51,6 +51,7 @@ const AppView = {
 
         // Initialize input handler
         this.inputHandler = new InputHandler(this.canvas, this.creature, this.physicsSolver);
+        this.inputHandler.setAppView(this);
 
         // Initialize minigame manager
         this.minigameManager = new MinigameManager(
@@ -120,6 +121,9 @@ const AppView = {
 
         // Setup room panel
         this.setupRoomPanel();
+
+        // Setup room mode exit button
+        this.setupRoomModeExit();
 
         // Initialize food drag handler (after status panel setup)
         this.foodDragHandler = new FoodDragHandler(this);
@@ -360,6 +364,17 @@ const AppView = {
         if (overlay) overlay.classList.remove('active');
         if (panel) panel.classList.remove('active');
         this.isPanelOpen = false;
+    },
+
+    setupRoomModeExit() {
+        const exitBtn = document.getElementById('room-mode-exit-btn');
+        if (exitBtn) {
+            exitBtn.addEventListener('click', () => {
+                if (this.roomManager && this.roomManager.isInRoom()) {
+                    this.roomManager.leaveRoom();
+                }
+            });
+        }
     },
 
     startMinigame() {

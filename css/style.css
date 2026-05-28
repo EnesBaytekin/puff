@@ -1381,3 +1381,116 @@ body.theme-dark .room-leave-btn {
     background: linear-gradient(135deg, #6b3a3a, #8b4a4a);
     color: #e0e0e0;
 }
+
+/* ==============================
+   Room Mode (Dedicated Room View)
+   ============================== */
+
+.room-mode-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.25);
+    z-index: 997;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.room-mode-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.room-mode-ui {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1001;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.room-mode-ui.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.room-mode-header {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 20px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.room-mode-indicator {
+    font-size: 18px;
+}
+
+.room-mode-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.room-mode-exit-btn {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1001;
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 12px 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #2d2d2d;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+.room-mode-exit-btn:hover {
+    background: #ff9a9e;
+    border-color: #ff6b6b;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.room-mode-exit-btn:active {
+    transform: translateY(0);
+}
+
+/* Mobile responsive for room mode */
+@media (max-width: 480px) {
+    .room-mode-header {
+        top: 12px;
+        padding: 8px 14px;
+    }
+    .room-mode-name {
+        font-size: 12px;
+    }
+    .room-mode-exit-btn {
+        top: 12px;
+        left: 12px;
+        padding: 10px 14px;
+    }
+    .room-mode-exit-btn .btn-text {
+        display: none;
+    }
+}
