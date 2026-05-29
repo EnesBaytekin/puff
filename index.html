@@ -224,6 +224,20 @@
             <button class="reaction-btn" data-reaction="🤔" title="Thinking">🤔</button>
         </div>
 
+        <!-- Room Chat Panel -->
+        <div class="room-chat-panel" id="room-chat-panel">
+            <div class="room-chat-header">
+                <span>💬 Chat</span>
+                <button id="room-chat-close-btn" class="room-chat-close-btn">✕</button>
+            </div>
+            <div class="room-chat-messages" id="room-chat-messages"></div>
+            <div class="room-chat-input-area">
+                <input type="text" id="room-chat-input" placeholder="Type a message..." maxlength="200" autocomplete="off">
+                <button id="room-chat-send-btn">Send</button>
+            </div>
+        </div>
+        <button id="room-chat-toggle" class="room-chat-toggle">💬</button>
+
         <!-- Room Panel -->
         <div class="panel-overlay" id="room-overlay"></div>
         <div class="panel room-panel" id="room-panel">

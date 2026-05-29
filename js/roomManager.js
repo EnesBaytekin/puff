@@ -13,6 +13,11 @@ class RoomManager {
         this.sendThrottle = 30; // ms between sends
         this.reconnectRoom = null; // Room to re-join on socket reconnect
         this.currentReaction = null; // Current reaction/activity emoji (null or emoji string)
+        this.chatMessages = []; // Array of { userId, message, timestamp }
+        this.lastMessagePerUser = new Map(); // userId -> last message (for speech bubbles)
+        this._chatBubbleTimers = new Map(); // userId -> setTimeout id
+        this._chatInitialized = false;
+        this._chatOpen = false;
     }
 
     connect() {
@@ -69,6 +74,14 @@ class RoomManager {
             this.currentRoom = data.roomName;
             this.reconnectRoom = null; // Clear reconnection flag on successful join
 
+            // Load chat history
+            if (data.chatHistory && data.chatHistory.length > 0) {
+                this.chatMessages = data.chatHistory;
+                this.updateChatUI();
+            } else {
+                this.chatMessages = [];
+            }
+
             // Create remote puffs for existing users
             data.users.forEach(user => {
                 this.addRemotePuff(user.userId, user.puffData);
@@ -124,6 +137,26 @@ class RoomManager {
                     userData.puffData = data;
                 }
             }
+        });
+
+        this.socket.on('chat_message', (data) => {
+            console.log('[Room] Chat message from', data.userId, ':', data.message);
+            this.chatMessages.push(data);
+
+            // Set speech bubble for this user
+            if (this._chatBubbleTimers.has(data.userId)) {
+                clearTimeout(this._chatBubbleTimers.get(data.userId));
+            }
+            this.lastMessagePerUser.set(data.userId, data.message);
+            const timer = setTimeout(() => {
+                if (this.lastMessagePerUser.get(data.userId) === data.message) {
+                    this.lastMessagePerUser.delete(data.userId);
+                }
+                this._chatBubbleTimers.delete(data.userId);
+            }, 8000);
+            this._chatBubbleTimers.set(data.userId, timer);
+
+            this.updateChatUI();
         });
     }
 
@@ -222,6 +255,21 @@ class RoomManager {
         if (reactionBar) reactionBar.classList.add('active');
         this.setupReactionButtons();
         this.updateReactionButtonUI();
+
+        // Show chat toggle
+        const chatToggle = document.getElementById('room-chat-toggle');
+        if (chatToggle) chatToggle.classList.add('visible');
+        this.setupChatPanel();
+
+        // Re-open chat panel if it was open
+        if (this._chatOpen) {
+            const panel = document.getElementById('room-chat-panel');
+            if (panel) {
+                panel.classList.add('open');
+                this.updateChatUI();
+            }
+        }
+
         console.log('[Room] Room mode fully activated');
     }
 
@@ -252,6 +300,13 @@ class RoomManager {
         // Hide reaction buttons
         const reactionBar = document.getElementById('room-mode-reactions');
         if (reactionBar) reactionBar.classList.remove('active');
+
+        // Hide chat toggle and panel
+        const chatToggle = document.getElementById('room-chat-toggle');
+        if (chatToggle) chatToggle.classList.remove('visible');
+        const chatPanel = document.getElementById('room-chat-panel');
+        if (chatPanel) chatPanel.classList.remove('open');
+        this._chatOpen = false;
     }
 
     leaveRoom() {
@@ -267,6 +322,11 @@ class RoomManager {
         this.remoteUsers.clear();
         this.currentRoom = null;
         this.currentReaction = null;
+        this.chatMessages = [];
+        this.lastMessagePerUser.clear();
+        this._chatBubbleTimers.forEach(t => clearTimeout(t));
+        this._chatBubbleTimers.clear();
+        this._chatOpen = false;
 
         // Clear local creature's activity visual
         if (this.appView.creature) {
@@ -370,6 +430,13 @@ class RoomManager {
 
         this.exitRoomMode();
         this.updateRoomUI();
+
+        // Clear chat state
+        this.chatMessages = [];
+        this.lastMessagePerUser.clear();
+        this._chatBubbleTimers.forEach(t => clearTimeout(t));
+        this._chatBubbleTimers.clear();
+        this._chatOpen = false;
     }
 
     // Called each frame from game loop to update remote puff positions
@@ -439,6 +506,9 @@ class RoomManager {
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText(puff.displayName, nx, ny - 4);
                 ctx.restore();
+
+                // Chat speech bubble
+                this.drawChatBubble(ctx, puff, userId);
             }
         });
     }
@@ -477,6 +547,10 @@ class RoomManager {
         ctx.fillStyle = '#ffd700';
         ctx.fillText(creature.displayName || this.appView.puffName, nx, ny - 4);
         ctx.restore();
+
+        // Chat speech bubble for local user
+        const myId = API.getUserId();
+        this.drawChatBubble(ctx, creature, myId);
     }
 
     updateRoomUI() {
@@ -595,6 +669,143 @@ class RoomManager {
             // Force send puff update immediately so reaction syncs right away
             this.sendPuffUpdate();
         });
+    }
+
+    // --- Chat System ---
+
+    sendChatMessage(text) {
+        if (!this.socket || !this.socket.connected || !this.currentRoom) return;
+        const message = text.trim();
+        if (!message) return;
+        this.socket.emit('chat_message', { message });
+    }
+
+    setupChatPanel() {
+        if (this._chatInitialized) return;
+        this._chatInitialized = true;
+
+        const toggle = document.getElementById('room-chat-toggle');
+        const closeBtn = document.getElementById('room-chat-close-btn');
+        const sendBtn = document.getElementById('room-chat-send-btn');
+        const input = document.getElementById('room-chat-input');
+
+        if (toggle) toggle.addEventListener('click', () => this.toggleChatPanel());
+        if (closeBtn) closeBtn.addEventListener('click', () => this.closeChatPanel());
+        if (sendBtn) sendBtn.addEventListener('click', () => this.sendFromInput());
+        if (input) {
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') this.sendFromInput();
+            });
+        }
+    }
+
+    toggleChatPanel() {
+        const panel = document.getElementById('room-chat-panel');
+        if (!panel) return;
+        const opening = !panel.classList.contains('open');
+        panel.classList.toggle('open');
+        this._chatOpen = opening;
+        if (opening) {
+            const input = document.getElementById('room-chat-input');
+            if (input) input.focus();
+            this.updateChatUI();
+        }
+    }
+
+    closeChatPanel() {
+        const panel = document.getElementById('room-chat-panel');
+        if (panel) panel.classList.remove('open');
+        this._chatOpen = false;
+    }
+
+    sendFromInput() {
+        const input = document.getElementById('room-chat-input');
+        if (!input) return;
+        const text = input.value.trim();
+        if (!text) return;
+        this.sendChatMessage(text);
+        input.value = '';
+    }
+
+    updateChatUI() {
+        const container = document.getElementById('room-chat-messages');
+        if (!container) return;
+
+        // Only update if panel is open
+        const panel = document.getElementById('room-chat-panel');
+        if (!panel || !panel.classList.contains('open')) return;
+
+        container.innerHTML = '';
+        this.chatMessages.forEach(msg => {
+            const div = document.createElement('div');
+            const isOwn = msg.userId === API.getUserId();
+            div.className = 'chat-message' + (isOwn ? ' own-message' : '');
+            const name = this.remoteUsers.get(msg.userId)?.name || 'Unknown';
+            const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            div.innerHTML = `<span class="chat-username">${isOwn ? 'You' : this.escapeHtml(name)}</span><span class="chat-text">${this.escapeHtml(msg.message)}</span><span class="chat-time">${time}</span>`;
+            container.appendChild(div);
+        });
+        this.scrollChatToBottom();
+    }
+
+    scrollChatToBottom() {
+        const container = document.getElementById('room-chat-messages');
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+
+    escapeHtml(text) {
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+
+    // Draw a speech bubble above a puff showing their last chat message
+    drawChatBubble(ctx, puff, userId) {
+        const message = this.lastMessagePerUser.get(userId);
+        if (!message) return;
+
+        const truncated = message.length > 35 ? message.substring(0, 32) + '...' : message;
+        const bx = puff.centerParticle.x;
+        const by = puff.centerParticle.y - puff.radius * 1.9;
+
+        ctx.save();
+        ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+
+        const metrics = ctx.measureText(truncated);
+        const padding = 8;
+        const bw = metrics.width + padding * 2;
+        const bh = 22;
+        const rx = bx - bw / 2;
+        const ry = by - bh;
+
+        // Bubble background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(rx, ry, bw, bh, 8);
+            ctx.fill();
+        } else {
+            ctx.fillRect(rx, ry, bw, bh);
+        }
+
+        // Small triangle pointer
+        ctx.beginPath();
+        ctx.moveTo(bx - 4, ry + bh);
+        ctx.lineTo(bx + 4, ry + bh);
+        ctx.lineTo(bx, ry + bh + 5);
+        ctx.closePath();
+        ctx.fill();
+
+        // Message text
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(truncated, bx, by - 3);
+        ctx.restore();
     }
 
     cleanup() {

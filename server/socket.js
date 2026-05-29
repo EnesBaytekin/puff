@@ -47,9 +47,10 @@ function setupSocket(server) {
                 }
             });
 
-            // Send current room users to the joining user (excluding self)
+            // Send current room users and chat history to the joining user (excluding self)
             const currentUsers = [];
-            rooms.get(roomName).forEach((user, uid) => {
+            const roomData = rooms.get(roomName);
+            roomData.forEach((user, uid) => {
                 if (uid !== userId) {
                     currentUsers.push({
                         userId: uid,
@@ -59,7 +60,8 @@ function setupSocket(server) {
             });
             socket.emit('room_joined', {
                 roomName,
-                users: currentUsers
+                users: currentUsers,
+                chatHistory: roomData.chatHistory || []
             });
 
             // Broadcast to others that a new user joined
@@ -76,6 +78,25 @@ function setupSocket(server) {
                 currentUserId = null;
                 socket.emit('room_left');
             }
+        });
+
+        socket.on('chat_message', (data) => {
+            if (!currentRoom || !currentUserId) return;
+            const { message } = data;
+            if (!message || typeof message !== 'string' || message.trim().length === 0) return;
+            if (message.length > 200) return;
+
+            const room = rooms.get(currentRoom);
+            if (!room) return;
+
+            // Store in room chat history
+            const chatMessage = { userId: currentUserId, message: message.trim(), timestamp: Date.now() };
+            room.chatHistory = room.chatHistory || [];
+            room.chatHistory.push(chatMessage);
+            if (room.chatHistory.length > 50) room.chatHistory.shift();
+
+            // Broadcast to ALL users in room (including sender)
+            io.to(currentRoom).emit('chat_message', chatMessage);
         });
 
         socket.on('puff_update', (data) => {
