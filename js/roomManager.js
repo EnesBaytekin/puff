@@ -345,7 +345,7 @@ class RoomManager {
         puff.displayName = puffData.name || 'Puff';
 
         // Set initial activity based on reaction data
-        puff.activity = puffData.reaction === '💼' ? 'reading' : null;
+        puff.activity = this.getActivityForReaction(puffData.reaction);
 
         this.remotePuffs.set(userId, puff);
         this.remoteUsers.set(userId, { puffData, name: puffData.name || 'Puff' });
@@ -395,11 +395,7 @@ class RoomManager {
             }
 
             // Map remote reaction to activity for visual rendering
-            if (puff.remoteReaction === '💼') {
-                puff.activity = 'reading';
-            } else {
-                puff.activity = null;
-            }
+            puff.activity = this.getActivityForReaction(puff.remoteReaction);
 
             // Apply organic deformation for visual animation
             puff.applyOrganicDeformation();
@@ -559,8 +555,19 @@ class RoomManager {
         // Update local creature's activity for visual rendering
         const creature = this.appView.creature;
         if (creature) {
-            creature.activity = this.currentReaction === '💼' ? 'reading' : null;
+            creature.activity = this.getActivityForReaction(this.currentReaction);
         }
+    }
+
+    // Map reaction emoji to activity visual state
+    getActivityForReaction(reaction) {
+        const map = {
+            '💼': 'reading',
+            '💃': 'dancing',
+            '😴': 'sleepy',
+            '🤔': 'thinking'
+        };
+        return map[reaction] || null;
     }
 
     // Update active state on reaction buttons

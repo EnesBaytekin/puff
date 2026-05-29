@@ -22,8 +22,12 @@ class SoftBody {
         // Sleep state
         this.isSleeping = false;
 
-        // Activity state (null, 'reading', etc.)
+        // Activity state (null, 'reading', 'dancing', 'sleepy', 'thinking')
         this.activity = null;
+
+        // Dance animation particles
+        this.danceNotes = [];
+        this.lastDanceNoteTime = 0;
 
         // Eating animation state
         this.isEating = false;
@@ -227,6 +231,10 @@ class SoftBody {
     // Set activity state (visual behavior like reading)
     setActivity(activity) {
         this.activity = activity;
+        // Clear dance particles when switching away from dancing
+        if (activity !== 'dancing') {
+            this.danceNotes = [];
+        }
     }
 
     // Start eating animation
@@ -261,6 +269,13 @@ class SoftBody {
         // Update mainCircle position to follow the center particle
         this.mainCircle.x = this.centerParticle.x;
         this.mainCircle.y = this.centerParticle.y;
+
+        // Dance wobble — subtle body sway
+        if (this.activity === 'dancing') {
+            const t = Date.now() * 0.003;
+            this.mainCircle.x += Math.sin(t * 1.3) * this.radius * 0.06;
+            this.mainCircle.y += Math.sin(t * 1.7 + 1) * this.radius * 0.04;
+        }
 
         // Breathing animation when sleeping
         let breathingScale = 1.0;
@@ -417,13 +432,17 @@ class SoftBody {
         // Draw the face on top
         this.drawFace(ctx);
 
-        // Draw activity visuals (book, etc.) in front of body, below face
+        // Draw activity visuals in front of body, below face
         if (this.activity === 'reading') {
             this.drawBook(ctx);
+        } else if (this.activity === 'dancing') {
+            this.drawDanceNotes(ctx);
+        } else if (this.activity === 'thinking') {
+            this.drawThoughtBubble(ctx);
         }
 
         // Draw sleep particles (z-z-z)
-        if (this.isSleeping) {
+        if (this.isSleeping || this.activity === 'sleepy') {
             this.drawSleepParticles(ctx);
         }
     }
@@ -538,7 +557,7 @@ class SoftBody {
         ctx.strokeStyle = this.getContrastColor();
 
         // Draw eyes - closed if sleeping
-        if (this.isSleeping) {
+        if (this.isSleeping || this.activity === 'sleepy') {
             // Closed eyes (arcs)
             ctx.lineWidth = this.radius * 0.03;
             ctx.lineCap = 'round';
@@ -588,6 +607,55 @@ class SoftBody {
             ctx.arc(rightEyeX + wanderX, rightEyeY + wanderY, pupilR, 0, Math.PI * 2);
             ctx.fillStyle = '#333';
             ctx.fill();
+        } else if (this.activity === 'dancing') {
+            // Happy squint eyes ^ ^ — upward arcs (∩) = mutlu gözler
+            const eyeR = this.radius * 0.09;
+            ctx.strokeStyle = this.getContrastColor();
+            ctx.lineWidth = this.radius * 0.028;
+            ctx.lineCap = 'round';
+
+            // Left eye — arc from left to right through TOP = ∩ shape
+            ctx.beginPath();
+            ctx.arc(leftEyeX, leftEyeY, eyeR, 0, Math.PI, true);
+            ctx.stroke();
+
+            // Right eye
+            ctx.beginPath();
+            ctx.arc(rightEyeX, rightEyeY, eyeR, 0, Math.PI, true);
+            ctx.stroke();
+        } else if (this.activity === 'thinking') {
+            // Thinking — pupils shifted toward thought bubble (upper-right)
+            const eyeR = this.radius * 0.09;
+            const pupilR = eyeR * 0.5;
+            const pupilX = this.radius * 0.03;
+            const pupilY = this.radius * 0.035;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = this.getContrastColor();
+            ctx.lineWidth = 1;
+
+            // Left eye
+            ctx.beginPath();
+            ctx.arc(leftEyeX, leftEyeY, eyeR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(leftEyeX + pupilX, leftEyeY - pupilY, pupilR, 0, Math.PI * 2);
+            ctx.fillStyle = '#333';
+            ctx.fill();
+
+            // Right eye
+            ctx.beginPath();
+            ctx.arc(rightEyeX, rightEyeY, eyeR, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(rightEyeX + pupilX, rightEyeY - pupilY, pupilR, 0, Math.PI * 2);
+            ctx.fillStyle = '#333';
+            ctx.fill();
         } else {
             // Open eyes (simple dots)
             ctx.fillStyle = this.getContrastColor();
@@ -604,15 +672,30 @@ class SoftBody {
         // Mood 100 = very sad (downward U), Mood 50 = neutral (flat line), Mood 0 = very happy (upward U)
         const mood = this.puffState.mood || 50;
 
-        ctx.lineWidth = this.radius * 0.025; // Slightly thinner for cute look
+        ctx.lineWidth = this.radius * 0.025;
         ctx.lineCap = 'round';
-        ctx.beginPath();
 
-        // Fixed narrow width
-        const mouthHalfWidth = this.radius * 0.1; // Half width of mouth
+        const mouthHalfWidth = this.radius * 0.1;
 
-        // If eating, mouth is open/closed based on chew cycle
-        if (this.isEating) {
+        // Activity-specific mouths
+        if (this.activity === 'dancing' && !this.isEating) {
+            // Big happy smile (∪) — corners up, center down
+            const bigW = this.radius * 0.15;
+            const smileDepth = this.radius * 0.12;
+            ctx.strokeStyle = this.getContrastColor();
+            ctx.beginPath();
+            ctx.moveTo(mouthX - bigW, mouthY - smileDepth * 0.3);
+            ctx.quadraticCurveTo(mouthX, mouthY + smileDepth, mouthX + bigW, mouthY - smileDepth * 0.3);
+            ctx.stroke();
+        } else if (this.activity === 'thinking' && !this.isEating) {
+            // Pursed thinking mouth — small wavy line
+            ctx.strokeStyle = this.getContrastColor();
+            ctx.beginPath();
+            ctx.moveTo(mouthX - mouthHalfWidth, mouthY - this.radius * 0.01);
+            ctx.quadraticCurveTo(mouthX - mouthHalfWidth * 0.5, mouthY + this.radius * 0.03, mouthX, mouthY - this.radius * 0.01);
+            ctx.quadraticCurveTo(mouthX + mouthHalfWidth * 0.5, mouthY - this.radius * 0.04, mouthX + mouthHalfWidth, mouthY - this.radius * 0.01);
+            ctx.stroke();
+        } else if (this.isEating) {
             const chewOpen = (Math.abs(this.updateEating()) > 0.07);
             if (chewOpen) {
                 // Open mouth - small oval
@@ -770,6 +853,94 @@ class SoftBody {
         ctx.strokeStyle = 'rgba(220, 200, 170, 0.4)';
         ctx.lineWidth = 2;
         ctx.stroke();
+
+        ctx.restore();
+    }
+
+    // Draw floating music notes (dancing activity)
+    drawDanceNotes(ctx) {
+        const currentTime = Date.now();
+
+        // Add new note periodically
+        if (currentTime - this.lastDanceNoteTime > 700) {
+            this.lastDanceNoteTime = currentTime;
+            this.danceNotes.push({
+                x: this.centerParticle.x + (Math.random() - 0.5) * this.radius * 0.8,
+                y: this.centerParticle.y - this.radius * 0.5,
+                vx: (Math.random() - 0.5) * 1.2,
+                vy: -0.8 - Math.random() * 0.6,
+                life: 1.0,
+                note: Math.random() > 0.5 ? '♫' : '♪'
+            });
+        }
+
+        // Update and draw notes
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (let i = this.danceNotes.length - 1; i >= 0; i--) {
+            const n = this.danceNotes[i];
+            n.x += n.vx;
+            n.y += n.vy;
+            n.life -= 0.008;
+            if (n.life <= 0) {
+                this.danceNotes.splice(i, 1);
+                continue;
+            }
+            ctx.globalAlpha = n.life * 0.8;
+            ctx.font = `${this.radius * 0.2}px serif`;
+            ctx.fillStyle = this.getContrastColor();
+            ctx.fillText(n.note, n.x + Math.sin(currentTime * 0.003 + i) * 2, n.y);
+        }
+        ctx.restore();
+    }
+
+    // Draw thought bubble (thinking activity)
+    drawThoughtBubble(ctx) {
+        const cx = this.centerParticle.x;
+        const cy = this.centerParticle.y;
+        const r = this.radius;
+
+        // Gentle bobbing animation
+        const bob = Math.sin(Date.now() * 0.002) * r * 0.025;
+
+        // Position to upper-right of puff
+        const bx = cx + r * 0.5;
+        const by = cy - r * 0.85 + bob;
+        const bw = r * 0.38;
+        const bh = r * 0.26;
+
+        ctx.save();
+
+        // Main bubble
+        ctx.beginPath();
+        ctx.ellipse(bx, by, bw, bh, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // "..." text
+        ctx.fillStyle = '#666';
+        ctx.font = `bold ${bh * 0.45}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('...', bx, by + 1);
+
+        // Trailing small bubbles
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.lineWidth = 1;
+        for (let i = 1; i <= 2; i++) {
+            const bx2 = bx + (i % 2 === 0 ? 1 : -1) * bw * 0.35;
+            const by2 = by + bh * 0.5 + i * bh * 0.25;
+            const br = bh * 0.08 * (1 - i * 0.25);
+            ctx.beginPath();
+            ctx.arc(bx2, by2, br, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
 
         ctx.restore();
     }
