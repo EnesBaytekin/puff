@@ -257,11 +257,11 @@ class PhysicsSolver {
 
         if (dist < 5) return; // Too close, ignore
 
-        // Normalize and scale: closer = stronger push
+        // Distance-based quadratic falloff: closer = stronger, farther = weaker
         // Push AWAY from the click point (opposite direction)
-        const maxDist = 500;
+        const maxDist = 600;
         const normalizedDist = Math.min(dist / maxDist, 1);
-        const forceMag = (1 - normalizedDist * 0.7) * 2;
+        const forceMag = 4 * (1 - normalizedDist) * (1 - normalizedDist);
 
         const nx = (dx / dist) * forceMag;
         const ny = (dy / dist) * forceMag;

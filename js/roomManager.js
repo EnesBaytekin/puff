@@ -562,7 +562,7 @@ class RoomManager {
     // Map reaction emoji to activity visual state
     getActivityForReaction(reaction) {
         const map = {
-            '💼': 'reading',
+            '📖': 'reading',
             '💃': 'dancing',
             '😴': 'sleepy',
             '🤔': 'thinking'
