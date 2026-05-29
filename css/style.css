@@ -1602,7 +1602,7 @@ body.theme-dark .room-leave-btn {
     right: 20px;
     bottom: 84px;
     width: 300px;
-    max-height: 400px;
+    height: 400px;
     z-index: 1010;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(12px);
@@ -1646,21 +1646,27 @@ body.theme-dark .room-leave-btn {
 
 .room-chat-messages {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 10px 12px;
-    min-height: 100px;
-    max-height: 280px;
+    touch-action: pan-y;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+    overscroll-behavior: contain;
 }
 
 .room-chat-messages::-webkit-scrollbar {
-    width: 4px;
+    width: 6px;
 }
 
 .room-chat-messages::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 3px;
+}
+
+.room-chat-messages::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .chat-message {

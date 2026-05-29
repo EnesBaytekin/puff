@@ -170,7 +170,12 @@ class InputHandler {
         }, { passive: false });
 
         window.addEventListener('touchmove', (event) => {
-            event.preventDefault(); // Prevent scrolling
+            // Allow touch scrolling inside chat panel
+            const chatPanel = document.getElementById('room-chat-panel');
+            if (chatPanel && chatPanel.classList.contains('open') && chatPanel.contains(event.target)) {
+                return;
+            }
+            event.preventDefault(); // Prevent scrolling elsewhere
             const pos = this.getTouchPosition(event);
             const touch = event.touches[0];
             this.drag(pos.x, pos.y, touch.identifier);
