@@ -268,6 +268,11 @@ class RoomManager {
         this.currentRoom = null;
         this.currentReaction = null;
 
+        // Clear local creature's activity visual
+        if (this.appView.creature) {
+            this.appView.creature.activity = null;
+        }
+
         // Exit room mode
         this.exitRoomMode();
 
@@ -339,6 +344,9 @@ class RoomManager {
         puff.remoteReaction = puffData.reaction || null;
         puff.displayName = puffData.name || 'Puff';
 
+        // Set initial activity based on reaction data
+        puff.activity = puffData.reaction === '💼' ? 'reading' : null;
+
         this.remotePuffs.set(userId, puff);
         this.remoteUsers.set(userId, { puffData, name: puffData.name || 'Puff' });
     }
@@ -354,6 +362,12 @@ class RoomManager {
         this.remoteUsers.clear();
         this.currentRoom = null;
         this.currentReaction = null;
+
+        // Clear local creature's activity visual
+        if (this.appView.creature) {
+            this.appView.creature.activity = null;
+        }
+
         this.exitRoomMode();
         this.updateRoomUI();
     }
@@ -378,6 +392,13 @@ class RoomManager {
             // Update sleep state
             if (puff.remoteTargetSleeping !== undefined) {
                 puff.setSleepState(puff.remoteTargetSleeping);
+            }
+
+            // Map remote reaction to activity for visual rendering
+            if (puff.remoteReaction === '💼') {
+                puff.activity = 'reading';
+            } else {
+                puff.activity = null;
             }
 
             // Apply organic deformation for visual animation
@@ -422,16 +443,6 @@ class RoomManager {
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText(puff.displayName, nx, ny - 4);
                 ctx.restore();
-
-                // Draw reaction indicator above name tag
-                if (puff.remoteReaction) {
-                    ctx.save();
-                    ctx.font = '20px -apple-system, BlinkMacSystemFont, sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'bottom';
-                    ctx.fillText(puff.remoteReaction, nx, ny - bh - 4);
-                    ctx.restore();
-                }
             }
         });
     }
@@ -470,16 +481,6 @@ class RoomManager {
         ctx.fillStyle = '#ffd700';
         ctx.fillText(creature.displayName || this.appView.puffName, nx, ny - 4);
         ctx.restore();
-
-        // Draw reaction indicator above name tag
-        if (this.currentReaction) {
-            ctx.save();
-            ctx.font = '20px -apple-system, BlinkMacSystemFont, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'bottom';
-            ctx.fillText(this.currentReaction, nx, ny - bh - 4);
-            ctx.restore();
-        }
     }
 
     updateRoomUI() {
@@ -554,6 +555,12 @@ class RoomManager {
             this.currentReaction = emoji; // Toggle on
         }
         this.updateReactionButtonUI();
+
+        // Update local creature's activity for visual rendering
+        const creature = this.appView.creature;
+        if (creature) {
+            creature.activity = this.currentReaction === '💼' ? 'reading' : null;
+        }
     }
 
     // Update active state on reaction buttons

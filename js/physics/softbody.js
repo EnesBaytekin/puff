@@ -22,6 +22,9 @@ class SoftBody {
         // Sleep state
         this.isSleeping = false;
 
+        // Activity state (null, 'reading', etc.)
+        this.activity = null;
+
         // Eating animation state
         this.isEating = false;
         this.eatingTimer = 0;
@@ -221,6 +224,11 @@ class SoftBody {
         }
     }
 
+    // Set activity state (visual behavior like reading)
+    setActivity(activity) {
+        this.activity = activity;
+    }
+
     // Start eating animation
     startEating() {
         this.isEating = true;
@@ -409,6 +417,11 @@ class SoftBody {
         // Draw the face on top
         this.drawFace(ctx);
 
+        // Draw activity visuals (book, etc.) in front of body, below face
+        if (this.activity === 'reading') {
+            this.drawBook(ctx);
+        }
+
         // Draw sleep particles (z-z-z)
         if (this.isSleeping) {
             this.drawSleepParticles(ctx);
@@ -539,8 +552,41 @@ class SoftBody {
             ctx.beginPath();
             ctx.arc(rightEyeX, rightEyeY, this.radius * 0.08, 0.2 * Math.PI, 0.8 * Math.PI);
             ctx.stroke();
+        } else if (this.activity === 'reading') {
+            // Reading eyes — looking down at book
+            const eyeR = this.radius * 0.08;
+            const pupilR = eyeR * 0.55;
+            const pupilY = this.radius * 0.04; // pupil shifted down
+
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = this.getContrastColor();
+            ctx.lineWidth = 1;
+
+            // Left eye
+            ctx.beginPath();
+            ctx.arc(leftEyeX, leftEyeY, eyeR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(leftEyeX, leftEyeY + pupilY, pupilR, 0, Math.PI * 2);
+            ctx.fillStyle = '#333';
+            ctx.fill();
+
+            // Right eye
+            ctx.beginPath();
+            ctx.arc(rightEyeX, rightEyeY, eyeR, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(rightEyeX, rightEyeY + pupilY, pupilR, 0, Math.PI * 2);
+            ctx.fillStyle = '#333';
+            ctx.fill();
         } else {
             // Open eyes (simple dots)
+            ctx.fillStyle = this.getContrastColor();
             ctx.beginPath();
             ctx.arc(leftEyeX, leftEyeY, this.radius * 0.08, 0, Math.PI * 2);
             ctx.fill();
@@ -597,6 +643,91 @@ class SoftBody {
             ctx.quadraticCurveTo(mouthX, mouthY - curveDepth, mouthX + mouthHalfWidth, mouthY + curveDepth * 0.3);
             ctx.stroke();
         }
+    }
+
+    // Draw an open book in front of the puff (reading activity)
+    drawBook(ctx) {
+        const cx = this.centerParticle.x;
+        const cy = this.centerParticle.y;
+        const r = this.radius;
+
+        // Book positioning — below the face, in front of the body
+        const pageW = r * 0.45;
+        const pageH = r * 0.28;
+        const bookY = cy + r * 0.35;
+
+        ctx.save();
+
+        // --- Left page ---
+        ctx.beginPath();
+        ctx.moveTo(cx, bookY - pageH * 0.3);
+        ctx.quadraticCurveTo(cx - pageW * 0.5, bookY - pageH * 0.4, cx - pageW, bookY - pageH * 0.05);
+        ctx.lineTo(cx - pageW, bookY + pageH * 0.15);
+        ctx.lineTo(cx, bookY + pageH * 0.2);
+        ctx.closePath();
+
+        let grad = ctx.createLinearGradient(cx - pageW, bookY, cx, bookY);
+        grad.addColorStop(0, '#f5f0e0');
+        grad.addColorStop(1, '#ede5c8');
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.strokeStyle = '#b8a88a';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // --- Right page ---
+        ctx.beginPath();
+        ctx.moveTo(cx, bookY - pageH * 0.3);
+        ctx.quadraticCurveTo(cx + pageW * 0.5, bookY - pageH * 0.4, cx + pageW, bookY - pageH * 0.05);
+        ctx.lineTo(cx + pageW, bookY + pageH * 0.15);
+        ctx.lineTo(cx, bookY + pageH * 0.2);
+        ctx.closePath();
+
+        grad = ctx.createLinearGradient(cx, bookY, cx + pageW, bookY);
+        grad.addColorStop(0, '#ede5c8');
+        grad.addColorStop(1, '#f5f0e0');
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.stroke();
+
+        // --- Spine ---
+        ctx.beginPath();
+        ctx.moveTo(cx, bookY - pageH * 0.3);
+        ctx.lineTo(cx, bookY + pageH * 0.2);
+        ctx.strokeStyle = '#6b4226';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // --- Text lines on pages ---
+        ctx.strokeStyle = 'rgba(120, 90, 50, 0.3)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 3; i++) {
+            const y = bookY - pageH * 0.15 + i * pageH * 0.13;
+            // Left page
+            ctx.beginPath();
+            ctx.moveTo(cx - pageW * 0.85, y);
+            ctx.lineTo(cx - pageW * 0.1, y);
+            ctx.stroke();
+            // Right page
+            ctx.beginPath();
+            ctx.moveTo(cx + pageW * 0.1, y);
+            ctx.lineTo(cx + pageW * 0.85, y);
+            ctx.stroke();
+        }
+
+        // --- Cover edges ---
+        ctx.strokeStyle = '#8b6914';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(cx - pageW, bookY - pageH * 0.05);
+        ctx.lineTo(cx - pageW, bookY + pageH * 0.15);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx + pageW, bookY - pageH * 0.05);
+        ctx.lineTo(cx + pageW, bookY + pageH * 0.15);
+        ctx.stroke();
+
+        ctx.restore();
     }
 
     // Get darker shade of the main color for border
