@@ -651,80 +651,120 @@ class SoftBody {
         const cy = this.centerParticle.y;
         const r = this.radius;
 
-        // Book positioning — below the face, in front of the body
-        const pageW = r * 0.45;
-        const pageH = r * 0.28;
-        const bookY = cy + r * 0.35;
+        // Perspective: book tilted away from us (bottom closer, top further)
+        // Open book viewed from front — wider at bottom, narrower at top
+        const bookY = cy + r * 0.34;
+        const botHalfW = r * 0.50;  // bottom half-width (closer)
+        const topHalfW = r * 0.32;  // top half-width (further)
+        const h = r * 0.28;         // height
+        const spineW = r * 0.04;    // visible spine/center gap
 
         ctx.save();
 
-        // --- Left page ---
+        // --- Left page (trapezoid with curved top) ---
         ctx.beginPath();
-        ctx.moveTo(cx, bookY - pageH * 0.3);
-        ctx.quadraticCurveTo(cx - pageW * 0.5, bookY - pageH * 0.4, cx - pageW, bookY - pageH * 0.05);
-        ctx.lineTo(cx - pageW, bookY + pageH * 0.15);
-        ctx.lineTo(cx, bookY + pageH * 0.2);
+        ctx.moveTo(cx + spineW, bookY + h * 0.3);                                 // bottom spine
+        ctx.lineTo(cx - botHalfW, bookY + h * 0.55);                              // bottom left
+        ctx.quadraticCurveTo(cx - topHalfW * 0.6, bookY - h * 0.3, cx - topHalfW + spineW, bookY - h * 0.05); // top left with curve
+        ctx.lineTo(cx + spineW, bookY - h * 0.05);                                 // top spine
         ctx.closePath();
 
-        let grad = ctx.createLinearGradient(cx - pageW, bookY, cx, bookY);
+        let grad = ctx.createLinearGradient(cx - botHalfW, bookY, cx, bookY);
         grad.addColorStop(0, '#f5f0e0');
-        grad.addColorStop(1, '#ede5c8');
+        grad.addColorStop(1, '#efe8d0');
         ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.strokeStyle = '#d4c9a8';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        // --- Right page (mirrored) ---
+        ctx.beginPath();
+        ctx.moveTo(cx - spineW, bookY + h * 0.3);                                 // bottom spine
+        ctx.lineTo(cx + botHalfW, bookY + h * 0.55);                              // bottom right
+        ctx.quadraticCurveTo(cx + topHalfW * 0.6, bookY - h * 0.3, cx + topHalfW - spineW, bookY - h * 0.05); // top right with curve
+        ctx.lineTo(cx - spineW, bookY - h * 0.05);                                 // top spine
+        ctx.closePath();
+
+        grad = ctx.createLinearGradient(cx + botHalfW, bookY, cx, bookY);
+        grad.addColorStop(0, '#f5f0e0');
+        grad.addColorStop(1, '#efe8d0');
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.stroke();
+
+        // --- Spine (the V-gap / center fold) ---
+        ctx.beginPath();
+        ctx.moveTo(cx - spineW, bookY - h * 0.05);
+        ctx.lineTo(cx + spineW, bookY - h * 0.05);
+        ctx.lineTo(cx + spineW, bookY + h * 0.3);
+        ctx.lineTo(cx - spineW, bookY + h * 0.3);
+        ctx.closePath();
+        ctx.fillStyle = '#d8d0b8';
         ctx.fill();
         ctx.strokeStyle = '#b8a88a';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        // --- Right page ---
-        ctx.beginPath();
-        ctx.moveTo(cx, bookY - pageH * 0.3);
-        ctx.quadraticCurveTo(cx + pageW * 0.5, bookY - pageH * 0.4, cx + pageW, bookY - pageH * 0.05);
-        ctx.lineTo(cx + pageW, bookY + pageH * 0.15);
-        ctx.lineTo(cx, bookY + pageH * 0.2);
-        ctx.closePath();
-
-        grad = ctx.createLinearGradient(cx, bookY, cx + pageW, bookY);
-        grad.addColorStop(0, '#ede5c8');
-        grad.addColorStop(1, '#f5f0e0');
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.stroke();
-
-        // --- Spine ---
-        ctx.beginPath();
-        ctx.moveTo(cx, bookY - pageH * 0.3);
-        ctx.lineTo(cx, bookY + pageH * 0.2);
-        ctx.strokeStyle = '#6b4226';
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
-        // --- Text lines on pages ---
-        ctx.strokeStyle = 'rgba(120, 90, 50, 0.3)';
         ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // --- Cover edges (brown border on outer edges) ---
+        ctx.strokeStyle = '#8b6914';
+        ctx.lineWidth = 2.5;
+
+        // Left cover edge
+        ctx.beginPath();
+        ctx.moveTo(cx - botHalfW, bookY + h * 0.55);
+        ctx.lineTo(cx - topHalfW + spineW * 0.5, bookY - h * 0.02);
+        ctx.stroke();
+
+        // Right cover edge
+        ctx.beginPath();
+        ctx.moveTo(cx + botHalfW, bookY + h * 0.55);
+        ctx.lineTo(cx + topHalfW - spineW * 0.5, bookY - h * 0.02);
+        ctx.stroke();
+
+        // Bottom cover edge (connecting both sides)
+        ctx.beginPath();
+        ctx.moveTo(cx - botHalfW, bookY + h * 0.55);
+        ctx.quadraticCurveTo(cx, bookY + h * 0.35, cx + botHalfW, bookY + h * 0.55);
+        ctx.strokeStyle = '#8b6914';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // --- Text lines on left page ---
+        ctx.strokeStyle = 'rgba(120, 90, 50, 0.2)';
+        ctx.lineWidth = 0.8;
         for (let i = 0; i < 3; i++) {
-            const y = bookY - pageH * 0.15 + i * pageH * 0.13;
-            // Left page
+            const t = 0.15 + i * 0.22;
+            const ly = bookY + h * (t - 0.05) * 0.9;
+            const lx1 = cx - botHalfW + r * 0.06;
+            const lx2 = cx - spineW - r * 0.02;
+            const rx1 = cx + spineW + r * 0.02;
+            const rx2 = cx + botHalfW - r * 0.06;
+
+            // Interpolate for perspective: top is narrower
+            const frac = 1 - (t / 0.85);
+            const p1x = lx1 * frac + (cx - topHalfW + r * 0.06) * (1 - frac);
+            const p2x = lx2 * frac + (cx - spineW * 0.5) * (1 - frac);
+            const p3x = rx1 * frac + (cx + spineW * 0.5) * (1 - frac);
+            const p4x = rx2 * frac + (cx + topHalfW - r * 0.06) * (1 - frac);
+
             ctx.beginPath();
-            ctx.moveTo(cx - pageW * 0.85, y);
-            ctx.lineTo(cx - pageW * 0.1, y);
+            ctx.moveTo(p1x, ly);
+            ctx.lineTo(p2x, ly);
             ctx.stroke();
-            // Right page
+
             ctx.beginPath();
-            ctx.moveTo(cx + pageW * 0.1, y);
-            ctx.lineTo(cx + pageW * 0.85, y);
+            ctx.moveTo(p3x, ly);
+            ctx.lineTo(p4x, ly);
             ctx.stroke();
         }
 
-        // --- Cover edges ---
-        ctx.strokeStyle = '#8b6914';
+        // --- Page edge (top — thin cream strip showing thickness) ---
+        ctx.beginPath();
+        ctx.moveTo(cx - topHalfW + spineW, bookY - h * 0.05);
+        ctx.quadraticCurveTo(cx, bookY - h * 0.1, cx + topHalfW - spineW, bookY - h * 0.05);
+        ctx.strokeStyle = 'rgba(220, 200, 170, 0.4)';
         ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(cx - pageW, bookY - pageH * 0.05);
-        ctx.lineTo(cx - pageW, bookY + pageH * 0.15);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(cx + pageW, bookY - pageH * 0.05);
-        ctx.lineTo(cx + pageW, bookY + pageH * 0.15);
         ctx.stroke();
 
         ctx.restore();
