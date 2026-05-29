@@ -258,18 +258,19 @@ class PhysicsSolver {
         if (dist < 5) return; // Too close, ignore
 
         // Normalize and scale: closer = stronger push
+        // Push AWAY from the click point (opposite direction)
         const maxDist = 500;
         const normalizedDist = Math.min(dist / maxDist, 1);
-        const forceMag = (1 - normalizedDist * 0.7) * 6;
+        const forceMag = (1 - normalizedDist * 0.7) * 2;
 
         const nx = (dx / dist) * forceMag;
         const ny = (dy / dist) * forceMag;
 
-        // Apply to all particles for a cohesive push
+        // Apply to all particles — push in OPPOSITE direction of click
         const particles = softBody.getParticles();
         for (const p of particles) {
-            p.oldX = p.x - nx;
-            p.oldY = p.y - ny;
+            p.oldX = p.x + nx;
+            p.oldY = p.y + ny;
         }
 
         this.markInteraction();
