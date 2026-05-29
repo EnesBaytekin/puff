@@ -725,6 +725,7 @@ class RoomManager {
         if (!text) return;
         this.sendChatMessage(text);
         input.value = '';
+        input.focus();
     }
 
     updateChatUI() {
