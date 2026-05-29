@@ -553,10 +553,14 @@ class SoftBody {
             ctx.arc(rightEyeX, rightEyeY, this.radius * 0.08, 0.2 * Math.PI, 0.8 * Math.PI);
             ctx.stroke();
         } else if (this.activity === 'reading') {
-            // Reading eyes — looking down at book
+            // Animated reading eyes — pupils wander as if scanning text
+            const t = Date.now() * 0.001;
             const eyeR = this.radius * 0.08;
             const pupilR = eyeR * 0.55;
-            const pupilY = this.radius * 0.04; // pupil shifted down
+
+            // Subtle wandering: horizontal scanning + slow vertical drift
+            const wanderX = Math.sin(t * 1.2) * this.radius * 0.025;
+            const wanderY = this.radius * 0.03 + Math.sin(t * 0.7 + 1.0) * this.radius * 0.008;
 
             ctx.fillStyle = '#ffffff';
             ctx.strokeStyle = this.getContrastColor();
@@ -569,7 +573,7 @@ class SoftBody {
             ctx.stroke();
 
             ctx.beginPath();
-            ctx.arc(leftEyeX, leftEyeY + pupilY, pupilR, 0, Math.PI * 2);
+            ctx.arc(leftEyeX + wanderX, leftEyeY + wanderY, pupilR, 0, Math.PI * 2);
             ctx.fillStyle = '#333';
             ctx.fill();
 
@@ -581,7 +585,7 @@ class SoftBody {
             ctx.stroke();
 
             ctx.beginPath();
-            ctx.arc(rightEyeX, rightEyeY + pupilY, pupilR, 0, Math.PI * 2);
+            ctx.arc(rightEyeX + wanderX, rightEyeY + wanderY, pupilR, 0, Math.PI * 2);
             ctx.fillStyle = '#333';
             ctx.fill();
         } else {
