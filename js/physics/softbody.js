@@ -270,11 +270,11 @@ class SoftBody {
         this.mainCircle.x = this.centerParticle.x;
         this.mainCircle.y = this.centerParticle.y;
 
-        // Dance wobble — subtle body sway
+        // Dance wobble — energetic body sway
         if (this.activity === 'dancing') {
             const t = Date.now() * 0.003;
-            this.mainCircle.x += Math.sin(t * 1.3) * this.radius * 0.06;
-            this.mainCircle.y += Math.sin(t * 1.7 + 1) * this.radius * 0.04;
+            this.mainCircle.x += Math.sin(t * 1.3) * this.radius * 0.12;
+            this.mainCircle.y += Math.sin(t * 1.7 + 1) * this.radius * 0.08;
         }
 
         // Breathing animation when sleeping
