@@ -555,7 +555,6 @@ class RoomManager {
 
     updateRoomUI() {
         const roomPanel = document.getElementById('room-panel');
-        const roomUsersList = document.getElementById('room-users-list');
         const leaveBtn = document.getElementById('room-leave-btn');
         const joinBtn = document.getElementById('room-join-btn');
         const roomNameInput = document.getElementById('room-name-input');
@@ -569,40 +568,12 @@ class RoomManager {
             if (joinBtn) joinBtn.style.display = 'none';
             if (leaveBtn) leaveBtn.style.display = 'block';
             if (roomStatus) roomStatus.textContent = `📍 In Room: "${this.currentRoom}"`;
-
-            // Update user list
-            if (roomUsersList) {
-                roomUsersList.innerHTML = '';
-                // Add self
-                const selfItem = document.createElement('div');
-                selfItem.className = 'room-user-item';
-                selfItem.innerHTML = `
-                    <span class="room-user-dot active"></span>
-                    <span class="room-user-name">${this.appView.puffName || 'You'} (you)</span>
-                `;
-                roomUsersList.appendChild(selfItem);
-
-                // Add remote users
-                this.remoteUsers.forEach((userData, userId) => {
-                    const item = document.createElement('div');
-                    item.className = 'room-user-item';
-                    item.innerHTML = `
-                        <span class="room-user-dot active"></span>
-                        <span class="room-user-name">${userData.name}</span>
-                    `;
-                    roomUsersList.appendChild(item);
-                });
-            }
         } else {
             // Not in a room
             if (roomNameInput) roomNameInput.disabled = false;
             if (joinBtn) joinBtn.style.display = 'block';
             if (leaveBtn) leaveBtn.style.display = 'none';
             if (roomStatus) roomStatus.textContent = 'Enter a room name to join or create one';
-
-            if (roomUsersList) {
-                roomUsersList.innerHTML = '<div class="room-user-empty">Not in a room yet</div>';
-            }
         }
     }
 
