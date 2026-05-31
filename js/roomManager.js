@@ -921,12 +921,12 @@ class RoomManager {
     }
 
     formatDuration(seconds) {
-        if (seconds < 60) return `${seconds}s`;
-        const m = Math.floor(seconds / 60);
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
         const s = seconds % 60;
-        if (m < 60) return `${m}:${s.toString().padStart(2, '0')}`;
-        const h = Math.floor(m / 60);
-        return `${h}h ${m % 60}m`;
+        if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        if (m > 0 || seconds >= 60) return `${m}:${s.toString().padStart(2, '0')}`;
+        return `0:${s.toString().padStart(2, '0')}`;
     }
 
     logActivitySession(reaction) {
@@ -1092,7 +1092,7 @@ class RoomManager {
 
         if (!this.roomTimerEnd || Date.now() >= this.roomTimerEnd) {
             if (this.roomTimerEnd && Date.now() >= this.roomTimerEnd) {
-                // Timer just completed — show briefly
+                // Timer just completed
                 const timeEl = document.getElementById('room-timer-time');
                 const fillEl = document.getElementById('room-timer-fill');
                 if (timeEl) timeEl.textContent = '⏰ Time\'s up!';
@@ -1104,8 +1104,9 @@ class RoomManager {
             return;
         }
 
-        const remaining = this.getRoomTimerRemaining();
-        const progress = this.getRoomTimerProgress();
+        const elapsed = this.getRoomTimerElapsed();
+        const total = this.getRoomTimerDuration();
+        const progress = elapsed / total;
 
         bar.style.display = 'flex';
 
@@ -1113,13 +1114,11 @@ class RoomManager {
         const fillEl = document.getElementById('room-timer-fill');
 
         if (timeEl) {
-            const m = Math.floor(remaining / 60);
-            const s = remaining % 60;
-            timeEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+            timeEl.textContent = `${this.formatDuration(elapsed)} / ${this.formatDuration(total)}`;
         }
 
         if (fillEl) {
-            fillEl.style.width = (progress * 100) + '%';
+            fillEl.style.width = Math.min(progress * 100, 100) + '%';
         }
     }
 
@@ -1192,6 +1191,10 @@ class RoomManager {
 
         const panel = document.getElementById('room-stats-panel');
         if (!panel || !panel.classList.contains('open')) return;
+
+        // Don't replace HTML if custom timer input is focused (would kill focus)
+        const customInput = document.getElementById('timer-custom-input');
+        if (customInput && document.activeElement === customInput) return;
 
         let html = '';
 
@@ -1293,11 +1296,11 @@ class RoomManager {
                 }
             });
         }
-        const customInput = document.getElementById('timer-custom-input');
-        if (customInput) {
-            customInput.addEventListener('keydown', (e) => {
+        const custInput = document.getElementById('timer-custom-input');
+        if (custInput) {
+            custInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
-                    const val = parseInt(customInput.value);
+                    const val = parseInt(custInput.value);
                     if (val && val > 0 && val <= 480) {
                         this.setRoomTimer(val * 60);
                     }
