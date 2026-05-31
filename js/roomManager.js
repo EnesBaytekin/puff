@@ -1462,8 +1462,8 @@ class RoomManager {
                     html += `<div class="activity-tile"><span class="tile-emoji">${this.getActivityEmoji(a)}</span><span class="tile-duration">${this.formatDuration(todayStats[a])}</span></div>`;
                 }
             });
-            html += `<div class="activity-tile tile-total"><span class="tile-emoji">📊</span><span class="tile-duration">${this.formatDuration(totalSeconds)}</span></div>`;
             html += '</div>';
+            html += `<div class="stats-total-row">Total · ${this.formatDuration(totalSeconds)}</div>`;
         }
         html += '</div>';
 

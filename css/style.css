@@ -1849,8 +1849,8 @@ body.theme-dark .room-leave-btn {
     position: fixed;
     right: 20px;
     bottom: 84px;
-    width: 260px;
-    max-height: 360px;
+    width: 320px;
+    max-height: 460px;
     z-index: 1010;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(12px);
@@ -1960,6 +1960,16 @@ body.theme-dark .room-leave-btn {
     border-radius: 50%;
     background: #4ade80;
     flex-shrink: 0;
+}
+
+.stats-total-row {
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffd700;
+    padding-top: 6px;
+    margin-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .online-name {
