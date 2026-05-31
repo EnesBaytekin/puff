@@ -170,10 +170,13 @@ class InputHandler {
         }, { passive: false });
 
         window.addEventListener('touchmove', (event) => {
-            // Allow touch scrolling inside chat panel
-            const chatPanel = document.getElementById('room-chat-panel');
-            if (chatPanel && chatPanel.classList.contains('open') && chatPanel.contains(event.target)) {
-                return;
+            // Allow touch scrolling inside panels
+            const panels = ['room-chat-panel', 'room-stats-panel'];
+            for (const id of panels) {
+                const el = document.getElementById(id);
+                if (el && el.classList.contains('open') && el.contains(event.target)) {
+                    return;
+                }
             }
             event.preventDefault(); // Prevent scrolling elsewhere
             const pos = this.getTouchPosition(event);
