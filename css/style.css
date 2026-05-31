@@ -1642,11 +1642,19 @@ body.theme-dark .room-leave-btn {
 }
 
 /* Room Chat Panel */
-.room-chat-toggle {
+.room-chat-toggle-wrapper {
     position: fixed;
     bottom: 24px;
     right: 20px;
     z-index: 1010;
+    display: none;
+}
+
+.room-chat-toggle-wrapper.visible {
+    display: block;
+}
+
+.room-chat-toggle {
     width: 50px;
     height: 50px;
     border-radius: 50%;
@@ -1656,23 +1664,41 @@ body.theme-dark .room-leave-btn {
     -webkit-backdrop-filter: blur(8px);
     font-size: 22px;
     cursor: pointer;
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     transition: transform 0.2s ease, background 0.2s ease;
 }
 
+.room-chat-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: #ff4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    display: none;
+}
+
+.room-chat-badge.visible {
+    display: block;
+}
+
 .room-chat-toggle:hover {
-    transform: scale(1.12);
+    transform: scale(1.15);
     background: rgba(0, 0, 0, 0.7);
 }
 
 .room-chat-toggle:active {
     transform: scale(0.95);
-}
-
-.room-chat-toggle.visible {
-    display: flex;
 }
 
 .room-chat-panel {
@@ -2231,9 +2257,11 @@ body.theme-dark .room-leave-btn {
         bottom: 80px;
         max-height: 300px;
     }
-    .room-chat-toggle {
+    .room-chat-toggle-wrapper {
         right: 10px;
         bottom: 18px;
+    }
+    .room-chat-toggle {
         width: 44px;
         height: 44px;
         font-size: 18px;

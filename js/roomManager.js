@@ -39,6 +39,8 @@ class RoomManager {
         this._lastRoomStatsSyncTime = Date.now();
         this._reconnecting = false;
         this._disconnectAt = null;
+        this._unreadChatCount = 0;
+        this._timerEndSoundPlayed = false;
     }
 
     connect() {
@@ -231,6 +233,13 @@ class RoomManager {
             console.log('[Room] Chat message from', data.userId, ':', data.message);
             this.chatMessages.push(data);
 
+            // Play sound and show badge unless chat is open
+            this.playNotificationSound();
+            if (!this._chatOpen) {
+                this._unreadChatCount++;
+                this.updateChatBadge();
+            }
+
             // Set speech bubble for this user
             if (this._chatBubbleTimers.has(data.userId)) {
                 clearTimeout(this._chatBubbleTimers.get(data.userId));
@@ -369,8 +378,8 @@ class RoomManager {
         this.updateReactionButtonUI();
 
         // Show chat toggle
-        const chatToggle = document.getElementById('room-chat-toggle');
-        if (chatToggle) chatToggle.classList.add('visible');
+        const chatWrapper = document.getElementById('room-chat-toggle-wrapper');
+        if (chatWrapper) chatWrapper.classList.add('visible');
         this.setupChatPanel();
 
         // Show stats toggle
@@ -432,8 +441,8 @@ class RoomManager {
         if (reactionBar) reactionBar.classList.remove('active');
 
         // Hide chat toggle and panel
-        const chatToggle = document.getElementById('room-chat-toggle');
-        if (chatToggle) chatToggle.classList.remove('visible');
+        const chatWrapper = document.getElementById('room-chat-toggle-wrapper');
+        if (chatWrapper) chatWrapper.classList.remove('visible');
         const chatPanel = document.getElementById('room-chat-panel');
         if (chatPanel) chatPanel.classList.remove('open');
         this._chatOpen = false;
@@ -477,6 +486,7 @@ class RoomManager {
         this._chatBubbleTimers.forEach(t => clearTimeout(t));
         this._chatBubbleTimers.clear();
         this._chatOpen = false;
+        this._unreadChatCount = 0;
         this.activityStartTime = null;
         this._statsOpen = false;
         this.roomTimerEnd = null;
@@ -632,6 +642,7 @@ class RoomManager {
         this._chatBubbleTimers.forEach(t => clearTimeout(t));
         this._chatBubbleTimers.clear();
         this._chatOpen = false;
+        this._unreadChatCount = 0;
         this.activityStartTime = null;
         this._statsOpen = false;
         this.roomTimerEnd = null;
@@ -931,6 +942,8 @@ class RoomManager {
         panel.classList.toggle('open');
         this._chatOpen = opening;
         if (opening) {
+            this._unreadChatCount = 0;
+            this.updateChatBadge();
             const input = document.getElementById('room-chat-input');
             if (input) input.focus();
             this.updateChatUI();
@@ -941,6 +954,8 @@ class RoomManager {
         const panel = document.getElementById('room-chat-panel');
         if (panel) panel.classList.remove('open');
         this._chatOpen = false;
+        this._unreadChatCount = 0;
+        this.updateChatBadge();
     }
 
     sendFromInput() {
@@ -985,6 +1000,83 @@ class RoomManager {
         const d = document.createElement('div');
         d.textContent = text;
         return d.innerHTML;
+    }
+
+    // Update chat notification badge on the toggle button
+    updateChatBadge() {
+        const badge = document.getElementById('room-chat-badge');
+        if (!badge) return;
+        if (this._unreadChatCount > 0) {
+            badge.textContent = this._unreadChatCount > 99 ? '99+' : String(this._unreadChatCount);
+            badge.classList.add('visible');
+        } else {
+            badge.classList.remove('visible');
+        }
+    }
+
+    // --- Sound Effects ---
+
+    _ensureAudioCtx() {
+        if (!this._audioCtx) {
+            try {
+                this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            } catch(e) {
+                // Web Audio not supported
+            }
+        }
+        // Resume if suspended (autoplay policy)
+        if (this._audioCtx && this._audioCtx.state === 'suspended') {
+            this._audioCtx.resume();
+        }
+        return this._audioCtx;
+    }
+
+    _canPlaySound() {
+        // Only play sound if tab is visible
+        return this._ensureAudioCtx() && !document.hidden;
+    }
+
+    playNotificationSound() {
+        if (!this._canPlaySound()) return;
+        const ctx = this._audioCtx;
+        // Short soft "pop" sound
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.12);
+    }
+
+    playTimerCompleteSound() {
+        if (!this._canPlaySound()) return;
+        const ctx = this._audioCtx;
+        // Longer ascending chime — 6 notes
+        const notes = [
+            { freq: 523, delay: 0, dur: 0.18 },
+            { freq: 587, delay: 0.15, dur: 0.18 },
+            { freq: 659, delay: 0.3, dur: 0.18 },
+            { freq: 784, delay: 0.5, dur: 0.2 },
+            { freq: 880, delay: 0.7, dur: 0.25 },
+            { freq: 1047, delay: 0.95, dur: 0.4 }
+        ];
+        notes.forEach(({ freq, delay, dur }) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+            gain.gain.setValueAtTime(0.1, ctx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+            osc.start(ctx.currentTime + delay);
+            osc.stop(ctx.currentTime + delay + dur);
+        });
     }
 
     // Draw a speech bubble above a puff showing their last chat message
@@ -1325,6 +1417,10 @@ class RoomManager {
         if (!this.roomTimerEnd || Date.now() >= this.roomTimerEnd) {
             if (this.roomTimerEnd && Date.now() >= this.roomTimerEnd) {
                 // Timer just completed
+                if (!this._timerEndSoundPlayed) {
+                    this._timerEndSoundPlayed = true;
+                    this.playTimerCompleteSound();
+                }
                 const timeEl = document.getElementById('room-timer-time');
                 const fillEl = document.getElementById('room-timer-fill');
                 if (timeEl) timeEl.textContent = '⏰ Time\'s up!';
@@ -1335,6 +1431,9 @@ class RoomManager {
             }
             return;
         }
+
+        // Reset sound flag when timer is counting (not complete)
+        if (this._timerEndSoundPlayed) this._timerEndSoundPlayed = false;
 
         const elapsed = this.getRoomTimerElapsed();
         const total = this.getRoomTimerDuration();
