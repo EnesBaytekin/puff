@@ -47,9 +47,12 @@ function setupSocket(server) {
                 }
             });
 
+            // Init room activity stats
+            const roomData = rooms.get(roomName);
+            if (!roomData.activityStats) roomData.activityStats = {};
+
             // Send current room users and chat history to the joining user (excluding self)
             const currentUsers = [];
-            const roomData = rooms.get(roomName);
             roomData.forEach((user, uid) => {
                 if (uid !== userId) {
                     currentUsers.push({
@@ -62,7 +65,8 @@ function setupSocket(server) {
                 roomName,
                 users: currentUsers,
                 chatHistory: roomData.chatHistory || [],
-                roomTimer: roomData.roomTimer || null
+                roomTimer: roomData.roomTimer || null,
+                activityStats: roomData.activityStats
             });
 
             // Broadcast to others that a new user joined
@@ -131,6 +135,26 @@ function setupSocket(server) {
             socket.to(currentRoom).emit('puff_update', {
                 userId: currentUserId,
                 ...data
+            });
+        });
+
+        socket.on('room_activity_sync', (data) => {
+            if (!currentRoom || !currentUserId) return;
+            const room = rooms.get(currentRoom);
+            if (!room) return;
+
+            // Store user's cumulative activity stats for this room
+            if (!room.activityStats) room.activityStats = {};
+            room.activityStats[currentUserId] = {
+                name: data.name || 'Unknown',
+                activities: data.activities || {}
+            };
+
+            // Broadcast updated stats to ALL in room
+            io.to(currentRoom).emit('room_activity_sync', {
+                userId: currentUserId,
+                name: data.name || 'Unknown',
+                activities: data.activities || {}
             });
         });
 

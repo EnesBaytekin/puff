@@ -32,6 +32,9 @@ class RoomManager {
         this.roomTimerStartTime = null; // when the timer was started
         this.roomTimerSetterId = null; // userId of who set it
         this._timerBarInterval = null;
+
+        // Room-level cumulative activity stats: { userId: { name, activities: { reading: 300, dancing: 0, ... } } }
+        this.roomActivityStats = {};
     }
 
     connect() {
@@ -111,6 +114,16 @@ class RoomManager {
                 this.roomTimerStartTime = null;
                 this.roomTimerSetterId = null;
             }
+
+            // Load room activity stats from server
+            if (data.activityStats) {
+                this.roomActivityStats = data.activityStats;
+            }
+
+            // Send my accumulated stats for this room after joining
+            setTimeout(() => {
+                this.syncRoomActivityStats();
+            }, 500);
 
             // Update UI
             this.updateRoomUI();
@@ -197,6 +210,15 @@ class RoomManager {
                 this.roomTimerSetterId = null;
             }
             this.updateSharedTimerBar();
+            if (this._statsOpen) this.updateStatsUI();
+        });
+
+        this.socket.on('room_activity_sync', (data) => {
+            if (!data || !data.userId) return;
+            this.roomActivityStats[data.userId] = {
+                name: data.name || 'Unknown',
+                activities: data.activities || {}
+            };
             if (this._statsOpen) this.updateStatsUI();
         });
     }
@@ -379,17 +401,19 @@ class RoomManager {
         this.stopSendingPosition();
         this.reconnectRoom = null; // Don't re-join after intentional leave
 
-        if (this.socket && this.socket.connected) {
-            this.socket.emit('leave_room');
-        }
-
-        // Log current activity before leaving
+        // Log current activity before leaving (this saves to room stats)
         if (this.currentReaction) {
             this.logActivitySession(this.currentReaction);
         }
 
+        // Sync final room stats before leaving
+        this.syncRoomActivityStats();
+
+        if (this.socket && this.socket.connected) {
+            this.socket.emit('leave_room');
+        }
+
         // Remove all remote puffs
-        this.remotePuffs.clear();
         this.remoteUsers.clear();
         this.currentRoom = null;
         this.currentReaction = null;
@@ -403,6 +427,7 @@ class RoomManager {
         this.roomTimerEnd = null;
         this.roomTimerStartTime = null;
         this.roomTimerSetterId = null;
+        this.roomActivityStats = {};
         this.stopTimerBar();
         if (this._statsRefreshInterval) {
             clearInterval(this._statsRefreshInterval);
@@ -537,6 +562,7 @@ class RoomManager {
         this.roomTimerEnd = null;
         this.roomTimerStartTime = null;
         this.roomTimerSetterId = null;
+        this.roomActivityStats = {};
         if (this._statsRefreshInterval) {
             clearInterval(this._statsRefreshInterval);
             this._statsRefreshInterval = null;
@@ -946,6 +972,11 @@ class RoomManager {
 
         // Save to daily stats in localStorage
         this.saveDailyStats(activity, duration);
+
+        // Save to room-level cumulative stats
+        this.addToRoomActivityStats(activity, duration);
+        // Sync to room after each session
+        this.syncRoomActivityStats();
         this.updateStatsUI();
     }
 
@@ -967,6 +998,49 @@ class RoomManager {
     getTodayStats() {
         const today = new Date().toISOString().slice(0, 10);
         return this.loadDailyStats()[today] || {};
+    }
+
+    // --- Room-level cumulative activity stats ---
+
+    getRoomStatsKey() {
+        return this.currentRoom ? `puff-room-stats-${this.currentRoom}` : null;
+    }
+
+    loadRoomStats() {
+        const key = this.getRoomStatsKey();
+        if (!key) return {};
+        try {
+            return JSON.parse(localStorage.getItem(key)) || {};
+        } catch { return {}; }
+    }
+
+    saveRoomStats(stats) {
+        const key = this.getRoomStatsKey();
+        if (!key) return;
+        localStorage.setItem(key, JSON.stringify(stats));
+    }
+
+    addToRoomActivityStats(activity, seconds) {
+        if (!this.currentRoom || seconds < 10) return;
+        const stats = this.loadRoomStats();
+        const myId = API.getUserId();
+        if (!stats[myId]) stats[myId] = { name: this.appView.puffName || 'You', activities: {} };
+        stats[myId].name = this.appView.puffName || 'You';
+        stats[myId].activities[activity] = (stats[myId].activities[activity] || 0) + seconds;
+        this.saveRoomStats(stats);
+    }
+
+    syncRoomActivityStats() {
+        if (!this.socket || !this.socket.connected || !this.currentRoom) return;
+        const stats = this.loadRoomStats();
+        const myId = API.getUserId();
+        const myStats = stats[myId];
+        if (!myStats) return;
+
+        this.socket.emit('room_activity_sync', {
+            name: this.appView.puffName || 'You',
+            activities: myStats.activities || {}
+        });
     }
 
     drawDurationBadge(ctx, puff, durationSeconds) {
@@ -1232,34 +1306,36 @@ class RoomManager {
         }
         html += '</div>';
 
-        // — Room Activity (individual durations) —
+        // — Room Activity (cumulative stats per user) —
         html += '<div class="stats-section"><div class="stats-section-title">📖 Room Activity</div>';
         const roomUsers = [];
+        const allActivities = ['reading', 'dancing', 'thinking', 'sleepy'];
 
-        // Local user
-        if (this.currentReaction) {
-            const activity = this.getActivityForReaction(this.currentReaction);
-            const emoji = this.getActivityEmoji(activity);
-            const dur = this.getCurrentActivityDuration();
-            roomUsers.push({ name: this.appView.puffName || 'You', emoji, activity, duration: dur, isOwn: true });
-        }
-
-        // Remote users
-        this.remotePuffs.forEach((puff, userId) => {
-            if (puff.remoteReaction) {
-                const activity = this.getActivityForReaction(puff.remoteReaction);
-                const emoji = this.getActivityEmoji(activity);
-                roomUsers.push({ name: puff.displayName, emoji, activity, duration: puff.remoteActivityDuration || 0, isOwn: false });
+        // Collect from roomActivityStats (persistent, across sessions)
+        Object.entries(this.roomActivityStats).forEach(([uid, stat]) => {
+            const isOwn = uid === API.getUserId();
+            const hasActivity = Object.values(stat.activities || {}).some(v => v > 0);
+            if (hasActivity) {
+                roomUsers.push({ userId: uid, name: stat.name || 'Unknown', activities: stat.activities || {}, isOwn });
             }
         });
 
         if (roomUsers.length === 0) {
-            html += '<div class="stats-empty">No one is active yet</div>';
+            html += '<div class="stats-empty">No activity recorded yet in this room</div>';
         } else {
             roomUsers.forEach(u => {
                 const cls = u.isOwn ? ' stats-row-own' : '';
-                const timeStr = u.duration >= 10 ? this.formatDuration(u.duration) : 'just started';
-                html += `<div class="stats-row${cls}"><span>${u.emoji} ${u.name}</span><span class="stats-duration">${timeStr}</span></div>`;
+                html += `<div class="stats-row${cls}"><span>${u.isOwn ? '👉' : ''} ${u.name}</span></div>`;
+                allActivities.forEach(act => {
+                    const duration = u.activities[act] || 0;
+                    if (duration > 0) {
+                        const emoji = this.getActivityEmoji(act);
+                        html += `<div class="stats-row stats-sub" style="padding-left:16px;">`;
+                        html += `<span>${emoji} ${act}</span>`;
+                        html += `<span class="stats-duration">${this.formatDuration(duration)}</span>`;
+                        html += `</div>`;
+                    }
+                });
             });
         }
         html += '</div>';

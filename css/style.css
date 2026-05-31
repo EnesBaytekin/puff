@@ -1943,6 +1943,11 @@ body.theme-dark .room-leave-btn {
     font-weight: 600;
 }
 
+.stats-row.stats-sub {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
 .stats-row.stats-total {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     margin-top: 4px;
