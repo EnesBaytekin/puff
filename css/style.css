@@ -1910,17 +1910,21 @@ body.theme-dark .room-leave-btn {
     border-radius: 2px;
 }
 
-.stats-section {
-    margin-bottom: 12px;
+/* Cards */
+.stats-card {
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.stats-section-title {
-    font-size: 11px;
+.stats-card-title {
+    font-size: 12px;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.5);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 6px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 8px;
+    letter-spacing: 0.3px;
 }
 
 .stats-empty {
@@ -1929,44 +1933,112 @@ body.theme-dark .room-leave-btn {
     padding: 4px 0;
 }
 
-.stats-row {
+/* Online Now list */
+.online-list {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.online-item {
+    display: flex;
     align-items: center;
-    padding: 4px 0;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 8px;
     font-size: 13px;
     color: rgba(255, 255, 255, 0.85);
 }
 
-.stats-row.stats-current {
-    color: #ffd700;
+.online-item-own {
+    background: rgba(255, 215, 0, 0.1);
+}
+
+.online-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #4ade80;
+    flex-shrink: 0;
+}
+
+.online-name {
     font-weight: 600;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.stats-row.stats-sub {
+.online-activity {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.6);
 }
 
-.stats-row.stats-total {
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    margin-top: 4px;
-    padding-top: 6px;
-    font-weight: 700;
-    color: #fff;
-}
-
-.stats-duration {
+.online-duration {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.45);
     font-variant-numeric: tabular-nums;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 12px;
 }
 
-.stats-row-own {
+/* User cards (Room Activity) */
+.user-card {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+}
+
+.user-card-own {
     background: rgba(255, 215, 0, 0.08);
-    border-radius: 4px;
-    padding-left: 4px;
-    padding-right: 4px;
+    border: 1px solid rgba(255, 215, 0, 0.12);
+}
+
+.user-card-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 6px;
+}
+
+/* Activity tiles (horizontal layout) */
+.activity-tiles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.activity-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    min-width: 50px;
+}
+
+.tile-emoji {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.tile-duration {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    font-variant-numeric: tabular-nums;
+}
+
+.tile-total {
+    background: rgba(255, 215, 0, 0.12);
+    border: 1px solid rgba(255, 215, 0, 0.15);
+}
+
+.tile-total .tile-duration {
+    color: #ffd700;
 }
 
 /* Timer */
@@ -2139,6 +2211,13 @@ body.theme-dark .room-leave-btn {
         left: 10px;
         width: auto;
         bottom: 80px;
-        max-height: 280px;
+        max-height: 340px;
+    }
+    .activity-tile {
+        min-width: 44px;
+        padding: 5px 8px;
+    }
+    .tile-emoji {
+        font-size: 16px;
     }
 }

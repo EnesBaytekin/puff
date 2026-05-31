@@ -1324,12 +1324,14 @@ class RoomManager {
         const customInput = document.getElementById('timer-custom-input');
         if (customInput && document.activeElement === customInput) return;
 
+        const myId = API.getUserId();
+        const allActivities = ['reading', 'dancing', 'thinking', 'sleepy'];
         let html = '';
 
-        // — Room Timer (shared countdown for the whole room) —
-        html += '<div class="stats-section"><div class="stats-section-title">⏱ Room Timer</div>';
+        // === ⏱ Room Timer Card ===
+        html += '<div class="stats-card">';
         if (!this.roomTimerEnd || Date.now() >= this.roomTimerEnd) {
-            // Presets — anyone can start a room timer
+            html += '<div class="stats-card-title">⏱ Room Timer</div>';
             html += '<div class="timer-presets">';
             [600, 1500, 2700, 3600].forEach(s => {
                 const label = s >= 3600 ? `${s/3600}h` : `${s/60}m`;
@@ -1344,10 +1346,9 @@ class RoomManager {
                 html += '<div class="timer-complete" style="margin-top:6px;">⏰ Time\'s up!</div>';
             }
         } else {
-            // Timer is running
             const remaining = this.getRoomTimerRemaining();
             const progress = this.getRoomTimerProgress();
-
+            html += '<div class="stats-card-title">⏱ Room Timer</div>';
             html += `<div class="timer-display">`;
             const m = Math.floor(remaining / 60);
             const s = remaining % 60;
@@ -1360,13 +1361,54 @@ class RoomManager {
         }
         html += '</div>';
 
-        // — Room Activity (cumulative stats per user) —
-        html += '<div class="stats-section"><div class="stats-section-title">📖 Room Activity</div>';
-        const roomUsers = [];
-        const allActivities = ['reading', 'dancing', 'thinking', 'sleepy'];
+        // === 👥 Online Now Card ===
+        html += '<div class="stats-card"><div class="stats-card-title">👥 Online Now</div>';
+        const onlineUsers = [];
+        // Self
+        onlineUsers.push({
+            userId: myId, name: this.appView.puffName || 'You',
+            emoji: this.currentReaction ? this.getActivityEmoji(this.getActivityForReaction(this.currentReaction)) : '💤',
+            activity: this.currentReaction ? this.getActivityForReaction(this.currentReaction) : 'idle',
+            dur: this.getCurrentActivityDuration(),
+            isOwn: true
+        });
+        // Remote users (only those currently connected)
+        this.remotePuffs.forEach((puff, uid) => {
+            const emoji = puff.remoteReaction ? this.getActivityEmoji(this.getActivityForReaction(puff.remoteReaction)) : '💤';
+            onlineUsers.push({
+                userId: uid, name: puff.displayName, emoji,
+                activity: puff.remoteReaction ? this.getActivityForReaction(puff.remoteReaction) : 'idle',
+                dur: puff.remoteActivityDuration || 0,
+                isOwn: false
+            });
+        });
 
-        // Merge my own localStorage stats into roomActivityStats for instant display
-        const myId = API.getUserId();
+        if (onlineUsers.length > 0) {
+            html += '<div class="online-list">';
+            onlineUsers.forEach(u => {
+                const cls = u.isOwn ? ' online-item-own' : '';
+                html += `<div class="online-item${cls}">`;
+                html += `<span class="online-dot"></span>`;
+                html += `<span class="online-name">${u.name}</span>`;
+                if (u.emoji !== '💤') {
+                    html += `<span class="online-activity">${u.emoji}</span>`;
+                    html += `<span class="online-duration">${u.dur >= 10 ? this.formatDuration(u.dur) : 'just now'}</span>`;
+                } else {
+                    html += `<span class="online-activity" style="opacity:0.4;">💤 idle</span>`;
+                }
+                html += '</div>';
+            });
+            html += '</div>';
+        } else {
+            html += '<div class="stats-empty">No one online</div>';
+        }
+        html += '</div>';
+
+        // === 📖 Room Activity Card ===
+        html += '<div class="stats-card"><div class="stats-card-title">📖 Room Activity</div>';
+        const roomUsers = [];
+
+        // Merge own localStorage stats
         const localStats = this.loadRoomStats();
         if (localStats[myId] && Object.values(localStats[myId].activities || {}).some(v => v > 0)) {
             this.roomActivityStats[myId] = {
@@ -1375,7 +1417,6 @@ class RoomManager {
             };
         }
 
-        // Collect from roomActivityStats (persistent, across sessions)
         Object.entries(this.roomActivityStats).forEach(([uid, stat]) => {
             const isOwn = uid === myId;
             const hasActivity = Object.values(stat.activities || {}).some(v => v > 0);
@@ -1385,45 +1426,50 @@ class RoomManager {
         });
 
         if (roomUsers.length === 0) {
-            html += '<div class="stats-empty">No activity recorded yet in this room</div>';
+            html += '<div class="stats-empty">No activity recorded yet</div>';
         } else {
             roomUsers.forEach(u => {
-                const cls = u.isOwn ? ' stats-row-own' : '';
-                html += `<div class="stats-row${cls}"><span>${u.isOwn ? '👉' : ''} ${u.name}</span></div>`;
+                const cls = u.isOwn ? ' user-card-own' : '';
+                html += `<div class="user-card${cls}">`;
+                html += `<div class="user-card-name">${u.name}</div>`;
+                html += '<div class="activity-tiles">';
                 allActivities.forEach(act => {
                     const duration = u.activities[act] || 0;
                     if (duration > 0) {
                         const emoji = this.getActivityEmoji(act);
-                        html += `<div class="stats-row stats-sub" style="padding-left:16px;">`;
-                        html += `<span>${emoji} ${act}</span>`;
-                        html += `<span class="stats-duration">${this.formatDuration(duration)}</span>`;
+                        html += `<div class="activity-tile">`;
+                        html += `<span class="tile-emoji">${emoji}</span>`;
+                        html += `<span class="tile-duration">${this.formatDuration(duration)}</span>`;
                         html += `</div>`;
                     }
                 });
+                html += '</div></div>';
             });
         }
         html += '</div>';
 
-        // — Today's Totals —
+        // === 📊 Today Card ===
+        html += '<div class="stats-card"><div class="stats-card-title">📊 Today</div>';
         const todayStats = this.getTodayStats();
         const totalSeconds = Object.values(todayStats).reduce((a, b) => a + b, 0);
-        html += `<div class="stats-section"><div class="stats-section-title">📊 Today</div>`;
         if (totalSeconds === 0) {
             html += '<div class="stats-empty">No activity yet</div>';
         } else {
+            html += '<div class="activity-tiles">';
             const order = ['reading', 'dancing', 'thinking', 'sleepy'];
             order.forEach(a => {
                 if (todayStats[a]) {
-                    html += `<div class="stats-row"><span>${this.getActivityEmoji(a)} ${a}</span><span class="stats-duration">${this.formatDuration(todayStats[a])}</span></div>`;
+                    html += `<div class="activity-tile"><span class="tile-emoji">${this.getActivityEmoji(a)}</span><span class="tile-duration">${this.formatDuration(todayStats[a])}</span></div>`;
                 }
             });
-            html += `<div class="stats-row stats-total"><span>Total</span><span class="stats-duration">${this.formatDuration(totalSeconds)}</span></div>`;
+            html += `<div class="activity-tile tile-total"><span class="tile-emoji">📊</span><span class="tile-duration">${this.formatDuration(totalSeconds)}</span></div>`;
+            html += '</div>';
         }
         html += '</div>';
 
         container.innerHTML = html;
 
-        // Handle custom input "Set" button (re-attach since innerHTML replaced it)
+        // Re-attach custom timer events
         const setBtn = container.querySelector('[data-timer-preset-selector]');
         if (setBtn) {
             setBtn.addEventListener('click', () => {
