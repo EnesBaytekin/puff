@@ -1498,6 +1498,11 @@ body.theme-dark .room-leave-btn {
     font-variant-numeric: tabular-nums;
 }
 
+.room-timer-restart {
+    padding: 0 20px 8px;
+    text-align: center;
+}
+
 .room-mode-header {
     position: fixed;
     top: 20px;

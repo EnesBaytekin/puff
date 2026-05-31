@@ -110,9 +110,16 @@ class RoomManager {
             this.reconnectRoom = null; // Clear reconnection flag on successful join
 
             // Load chat history
+            const oldChatCount = this.chatMessages.length;
             if (data.chatHistory && data.chatHistory.length > 0) {
                 this.chatMessages = data.chatHistory;
                 this.updateChatUI();
+
+                // Count unread messages on reconnect
+                if (this._reconnecting && data.chatHistory.length > oldChatCount) {
+                    this._unreadChatCount = data.chatHistory.length - oldChatCount;
+                    this.updateChatBadge();
+                }
             } else {
                 this.chatMessages = [];
             }
@@ -233,8 +240,10 @@ class RoomManager {
             console.log('[Room] Chat message from', data.userId, ':', data.message);
             this.chatMessages.push(data);
 
-            // Play sound and show badge unless chat is open
-            this.playNotificationSound();
+            // Play sound only for incoming messages (not own)
+            if (data.userId !== API.getUserId()) {
+                this.playNotificationSound();
+            }
             if (!this._chatOpen) {
                 this._unreadChatCount++;
                 this.updateChatBadge();
@@ -936,6 +945,9 @@ class RoomManager {
     }
 
     toggleChatPanel() {
+        // Close stats panel if open
+        if (this._statsOpen) this.closeStatsPanel();
+
         const panel = document.getElementById('room-chat-panel');
         if (!panel) return;
         const opening = !panel.classList.contains('open');
@@ -1340,6 +1352,11 @@ class RoomManager {
     }
 
     cancelRoomTimer() {
+        if (!this.roomTimerEnd) return;
+        // Ask confirmation for active timer only (not completed)
+        if (Date.now() < this.roomTimerEnd && !confirm('Cancel the running timer?')) {
+            return;
+        }
         this.roomTimerEnd = null;
         this.roomTimerStartTime = null;
         this.roomTimerSetterId = null;
@@ -1395,8 +1412,24 @@ class RoomManager {
         const bar = document.getElementById('room-timer-bar');
         if (bar && !bar.dataset.timerBarInit) {
             bar.dataset.timerBarInit = '1';
-            bar.addEventListener('click', () => {
+            bar.addEventListener('click', (e) => {
+                // Don't toggle stats if clicking the restart button
+                if (e.target.closest('#timer-restart-btn')) return;
                 this.toggleStatsPanel();
+            });
+        }
+
+        // Restart button handler
+        const restartBtn = document.getElementById('timer-restart-btn');
+        if (restartBtn && !restartBtn.dataset.restartInit) {
+            restartBtn.dataset.restartInit = '1';
+            restartBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Re-set the same duration
+                const prevTotal = this.getRoomTimerDuration();
+                if (prevTotal > 0) {
+                    this.setRoomTimer(prevTotal);
+                }
             });
         }
     }
@@ -1423,8 +1456,11 @@ class RoomManager {
                 }
                 const timeEl = document.getElementById('room-timer-time');
                 const fillEl = document.getElementById('room-timer-fill');
-                if (timeEl) timeEl.textContent = '⏰ Time\'s up!';
+                const restartEl = document.getElementById('room-timer-restart');
+                const total = this.getRoomTimerDuration();
+                if (timeEl) timeEl.textContent = `⏰ Time's up! (${this.formatDuration(total)})`;
                 if (fillEl) fillEl.style.width = '100%';
+                if (restartEl) restartEl.style.display = 'block';
                 bar.style.display = 'flex';
             } else {
                 bar.style.display = 'none';
@@ -1432,8 +1468,10 @@ class RoomManager {
             return;
         }
 
-        // Reset sound flag when timer is counting (not complete)
+        // Reset sound and restart button when timer is counting
         if (this._timerEndSoundPlayed) this._timerEndSoundPlayed = false;
+        const restartEl = document.getElementById('room-timer-restart');
+        if (restartEl) restartEl.style.display = 'none';
 
         const elapsed = this.getRoomTimerElapsed();
         const total = this.getRoomTimerDuration();
@@ -1483,6 +1521,9 @@ class RoomManager {
     }
 
     toggleStatsPanel() {
+        // Close chat panel if open
+        if (this._chatOpen) this.closeChatPanel();
+
         const panel = document.getElementById('room-stats-panel');
         if (!panel) return;
         panel.classList.toggle('open');
