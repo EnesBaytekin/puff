@@ -63,8 +63,8 @@ class RoomManager {
                         roomName,
                         userId: API.getUserId(),
                         puffData: {
-                            x: creature.centerParticle.x,
-                            y: creature.centerParticle.y,
+                            x: this.normX(creature.centerParticle.x),
+                            y: this.normY(creature.centerParticle.y),
                             color: creature.baseColor,
                             name: this.appView.puffName || 'Puff',
                             state: {
@@ -164,9 +164,11 @@ class RoomManager {
         this.socket.on('puff_update', (data) => {
             const puff = this.remotePuffs.get(data.userId);
             if (puff) {
-                // Smoothly move toward target position
-                puff.remoteTargetX = data.x;
-                puff.remoteTargetY = data.y;
+                // Store normalized position, denormalize in update()
+                puff.remoteNormX = data.x !== undefined ? data.x : 0.5;
+                puff.remoteNormY = data.y !== undefined ? data.y : 0.5;
+                puff.remoteTargetX = this.denormX(puff.remoteNormX);
+                puff.remoteTargetY = this.denormY(puff.remoteNormY);
                 puff.remoteTargetState = data.state || null;
                 puff.remoteTargetSleeping = data.isSleeping;
                 puff.remoteReaction = data.reaction || null;
@@ -244,8 +246,8 @@ class RoomManager {
         if (!creature) return;
 
         const puffData = {
-            x: creature.centerParticle.x,
-            y: creature.centerParticle.y,
+            x: this.normX(creature.centerParticle.x),
+            y: this.normY(creature.centerParticle.y),
             color: creature.baseColor,
             name: this.appView.puffName || 'Puff',
             state: {
@@ -467,6 +469,19 @@ class RoomManager {
         }
     }
 
+    getCanvasSize() {
+        if (this.appView.canvas) {
+            return { w: this.appView.canvas.getWidth(), h: this.appView.canvas.getHeight() };
+        }
+        return { w: window.innerWidth, h: window.innerHeight };
+    }
+
+    // Normalize pixel coords to 0-1 range for cross-screen sync
+    normX(px) { const c = this.getCanvasSize(); return c.w > 0 ? px / c.w : 0.5; }
+    normY(py) { const c = this.getCanvasSize(); return c.h > 0 ? py / c.h : 0.5; }
+    denormX(nx) { const c = this.getCanvasSize(); return nx * c.w; }
+    denormY(ny) { const c = this.getCanvasSize(); return ny * c.h; }
+
     sendPuffUpdate() {
         if (!this.socket || !this.socket.connected || !this.currentRoom) return;
 
@@ -474,8 +489,8 @@ class RoomManager {
         if (!creature) return;
 
         const data = {
-            x: Math.round(creature.centerParticle.x),
-            y: Math.round(creature.centerParticle.y),
+            x: this.normX(creature.centerParticle.x),
+            y: this.normY(creature.centerParticle.y),
             state: {
                 hunger: creature.puffState.hunger,
                 mood: creature.puffState.mood,
@@ -486,9 +501,9 @@ class RoomManager {
             activityDuration: this.getCurrentActivityDuration()
         };
 
-        // Throttle: only send if data changed meaningfully
+        // Throttle: only send if data changed meaningfully (rounded to avoid float jitter)
         const now = Date.now();
-        const dataKey = `${data.x},${data.y},${data.isSleeping},${data.reaction}`;
+        const dataKey = `${Math.round(data.x*100)},${Math.round(data.y*100)},${data.isSleeping},${data.reaction}`;
         if (dataKey !== this.lastSentData) {
             this.socket.emit('puff_update', data);
             this.lastSentData = dataKey;
@@ -506,19 +521,25 @@ class RoomManager {
         const canvas = this.appView.canvas;
         const radius = Math.min(canvas.getWidth(), canvas.getHeight()) * 0.12;
 
-        // Create SoftBody at the received position
+        // Create SoftBody at received position (denormalize to local screen)
+        const initX = puffData.x !== undefined ? this.denormX(puffData.x) : canvas.getWidth() / 2;
+        const initY = puffData.y !== undefined ? this.denormY(puffData.y) : canvas.getHeight() / 2;
         const puff = new SoftBody(
-            puffData.x || canvas.getWidth() / 2,
-            puffData.y || canvas.getHeight() / 2,
+            initX,
+            initY,
             radius,
             20,
             puffData.color || '#ffd6cc',
             puffData.state || { hunger: 50, mood: 50, energy: 50 }
         );
 
-        // Store target position for smooth interpolation
-        puff.remoteTargetX = puffData.x || canvas.getWidth() / 2;
-        puff.remoteTargetY = puffData.y || canvas.getHeight() / 2;
+        // Store normalized target position for cross-screen sync
+        const normX = puffData.x !== undefined ? puffData.x : 0.5;
+        const normY = puffData.y !== undefined ? puffData.y : 0.5;
+        puff.remoteNormX = normX;
+        puff.remoteNormY = normY;
+        puff.remoteTargetX = this.denormX(normX);
+        puff.remoteTargetY = this.denormY(normY);
         puff.remoteTargetState = puffData.state || null;
         puff.remoteTargetSleeping = puffData.isSleeping || false;
         puff.remoteReaction = puffData.reaction || null;
@@ -579,7 +600,11 @@ class RoomManager {
     // Called each frame from game loop to update remote puff positions
     update() {
         this.remotePuffs.forEach((puff) => {
-            // Smooth interpolation toward target position
+            // Denormalize target each frame (handles window resize)
+            if (puff.remoteNormX !== undefined) {
+                puff.remoteTargetX = this.denormX(puff.remoteNormX);
+                puff.remoteTargetY = this.denormY(puff.remoteNormY);
+            }
             const targetX = puff.remoteTargetX !== undefined ? puff.remoteTargetX : puff.centerParticle.x;
             const targetY = puff.remoteTargetY !== undefined ? puff.remoteTargetY : puff.centerParticle.y;
 
