@@ -41,6 +41,9 @@ class RoomManager {
         this._disconnectAt = null;
         this._unreadChatCount = 0;
         this._timerEndSoundPlayed = false;
+        this._todayStatsCache = {};
+        this._pendingDailyFlush = {};
+        this._dailyStatsFlushInterval = null;
     }
 
     connect() {
@@ -84,6 +87,10 @@ class RoomManager {
             }
         });
 
+
+            // Fetch today's daily stats from server
+            this.fetchDailyStats();
+
         this.socket.on('disconnect', () => {
             console.log('[Room] Socket disconnected');
             this.connected = false;
@@ -91,6 +98,10 @@ class RoomManager {
             if (this.currentRoom) {
                 // Graceful disconnect: keep room state, don't exit room mode
                 this.reconnectRoom = this.currentRoom;
+
+                // Flush un-synced time before disconnect
+                this.flushRoomStats();
+                this.flushDailyStats();
 
                 // Record disconnect time so we can adjust activity timer on reconnect
                 this._disconnectAt = Date.now();
@@ -399,8 +410,11 @@ class RoomManager {
         // Start shared timer bar updater
         this.startTimerBar();
 
-        // Start periodic room stats sync (every 10s)
+        // Start periodic room stats sync
         this.startRoomStatsSync();
+
+        // Start daily stats flush interval (every 30s)
+        this.startDailyStatsFlush();
 
         // Re-open panels if they were open
         if (this._chatOpen) {
@@ -459,6 +473,7 @@ class RoomManager {
         // Hide shared timer bar, reconnecting indicator, and stop room stats sync
         this.stopTimerBar();
         this.stopRoomStatsSync();
+        this.stopDailyStatsFlush();
         this._reconnecting = false;
         this.updateReconnectingUI();
 
@@ -474,13 +489,17 @@ class RoomManager {
         this.stopSendingPosition();
         this.reconnectRoom = null; // Don't re-join after intentional leave
 
-        // Log current activity before leaving (this saves to room stats)
+        // Flush remaining un-synced time to room stats
+        this.flushRoomStats();
+
+        // Log current activity before leaving (saves to daily stats)
         if (this.currentReaction) {
             this.logActivitySession(this.currentReaction);
         }
 
-        // Sync final room stats before leaving
+        // Sync final room stats and daily stats before leaving
         this.syncRoomActivityStats();
+        this.flushDailyStats();
 
         if (this.socket && this.socket.connected) {
             this.socket.emit('leave_room');
@@ -626,6 +645,10 @@ class RoomManager {
 
     handleDisconnect() {
         this.stopSendingPosition();
+
+        // Flush remaining un-synced time
+        this.flushRoomStats();
+        this.flushDailyStats();
 
         // Log current activity before clearing (capture before nulling)
         if (this.currentReaction) {
@@ -861,6 +884,8 @@ class RoomManager {
 
         // Log previous activity session if switching
         if (previousReaction && this.activityStartTime) {
+            // Flush un-synced time so daily/room stats capture the last seconds
+            this.flushRoomStats();
             this.logActivitySession(previousReaction);
         }
 
@@ -1174,21 +1199,9 @@ class RoomManager {
         };
         this.sessionHistory.push(session);
 
-        // Save to daily stats in localStorage
-        this.saveDailyStats(activity, duration);
-
-        // Save to room-level cumulative stats
-        this.addToRoomActivityStats(activity, duration);
-        // Sync to room after each session
-        this.syncRoomActivityStats();
+        // Daily stats are updated incrementally by the periodic sync interval.
+        // Don't add here to avoid double-counting.
         this.updateStatsUI();
-    }
-
-    loadDailyStats() {
-        try {
-            const raw = localStorage.getItem('puff-activity-stats');
-            return raw ? JSON.parse(raw) : {};
-        } catch { return {}; }
     }
 
     getTodayKey() {
@@ -1197,16 +1210,55 @@ class RoomManager {
         return new Date(d.getTime() - offset).toISOString().slice(0, 10);
     }
 
-    saveDailyStats(activity, seconds) {
+    async fetchDailyStats(date) {
+        try {
+            const token = API.getToken();
+            const url = `/api/puffs/stats/activity${date ? '?date=' + date : ''}`;
+            const res = await fetch(url, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            if (res.ok) {
+                const data = await res.json();
+                this._todayStatsCache = data.stats || {};
+                return data.stats || {};
+            }
+        } catch (e) {
+            console.warn('[Room] Failed to fetch daily stats:', e);
+        }
+        return this._todayStatsCache || {};
+    }
+
+    flushDailyStats() {
+        if (!this._pendingDailyFlush || Object.keys(this._pendingDailyFlush).length === 0) return;
+        const flush = { ...this._pendingDailyFlush };
+        this._pendingDailyFlush = {};
         const today = this.getTodayKey();
-        const stats = this.loadDailyStats();
-        if (!stats[today]) stats[today] = {};
-        stats[today][activity] = (stats[today][activity] || 0) + seconds;
-        localStorage.setItem('puff-activity-stats', JSON.stringify(stats));
+
+        // _todayStatsCache is already updated by saveDailyStats — don't modify it here
+
+        // Send to server
+        fetch('/api/puffs/stats/activity', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API.getToken()}`
+            },
+            body: JSON.stringify({ date: today, stats: flush })
+        }).catch(e => console.warn('[Room] Failed to sync daily stats:', e));
+    }
+
+    saveDailyStats(activity, seconds) {
+        if (!this._pendingDailyFlush) this._pendingDailyFlush = {};
+        this._pendingDailyFlush[activity] = (this._pendingDailyFlush[activity] || 0) + seconds;
+
+        // Flush every 30s from cache to make UI responsive
+        if (this._todayStatsCache) {
+            this._todayStatsCache[activity] = (this._todayStatsCache[activity] || 0) + seconds;
+        }
     }
 
     getTodayStats() {
-        return this.loadDailyStats()[this.getTodayKey()] || {};
+        return this._todayStatsCache || {};
     }
 
     // --- Room-level cumulative activity stats ---
@@ -1231,6 +1283,10 @@ class RoomManager {
 
     addToRoomActivityStats(activity, seconds) {
         if (!this.currentRoom || seconds <= 0) return;
+
+        // Live daily stats update (not just on session switch)
+        this.saveDailyStats(activity, seconds);
+
         const stats = this.loadRoomStats();
         const myId = API.getUserId();
         if (!stats[myId]) stats[myId] = { name: this.appView.puffName || 'You', activities: {} };
@@ -1244,6 +1300,10 @@ class RoomManager {
         }
         this.roomActivityStats[myId].name = this.appView.puffName || 'You';
         this.roomActivityStats[myId].activities[activity] = stats[myId].activities[activity];
+
+        // Immediately sync to others and refresh UI
+        this.syncRoomActivityStats();
+        if (this._statsOpen) this.updateStatsUI();
     }
 
     syncRoomActivityStats() {
@@ -1271,6 +1331,19 @@ class RoomManager {
         const el = document.getElementById('room-reconnecting');
         if (!el) return;
         el.style.display = this._reconnecting ? 'block' : 'none';
+    }
+
+    // Flush any remaining un-synced activity time to room stats
+    // (time since the last periodic sync)
+    flushRoomStats() {
+        if (!this.currentReaction || !this.currentRoom) return;
+        const now = Date.now();
+        const delta = Math.floor((now - this._lastRoomStatsSyncTime) / 1000);
+        if (delta > 0) {
+            const activity = this.getActivityForReaction(this.currentReaction);
+            this.addToRoomActivityStats(activity, delta);
+            this._lastRoomStatsSyncTime = now;
+        }
     }
 
     drawDurationBadge(ctx, puff, durationSeconds) {
@@ -1383,15 +1456,12 @@ class RoomManager {
                 this._lastRoomStatsSyncTime = now;
                 if (delta > 0) {
                     this.addToRoomActivityStats(activity, delta);
-                    this.syncRoomActivityStats();
+                    // addToRoomActivityStats already calls syncRoomActivityStats + updateStatsUI
                 }
             } else {
                 this._lastRoomStatsSyncTime = Date.now();
             }
-
-            // Also refresh stats panel if open
-            if (this._statsOpen) this.updateStatsUI();
-        }, 10000);
+        }, 3000);
     }
 
     stopRoomStatsSync() {
@@ -1399,6 +1469,19 @@ class RoomManager {
             clearInterval(this._roomStatsSyncInterval);
             this._roomStatsSyncInterval = null;
         }
+    }
+
+    startDailyStatsFlush() {
+        this.stopDailyStatsFlush();
+        this._dailyStatsFlushInterval = setInterval(() => this.flushDailyStats(), 30000);
+    }
+
+    stopDailyStatsFlush() {
+        if (this._dailyStatsFlushInterval) {
+            clearInterval(this._dailyStatsFlushInterval);
+            this._dailyStatsFlushInterval = null;
+        }
+        this.flushDailyStats();
     }
 
     // --- Shared Timer Bar (visible to everyone in room) ---

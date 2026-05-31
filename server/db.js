@@ -64,6 +64,23 @@ async function initDB() {
             // Don't throw - migration errors shouldn't crash the app
         }
 
+        // Migration: Create activity_stats table for daily per-user stats
+        try {
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS activity_stats (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    date DATE NOT NULL,
+                    activity VARCHAR(20) NOT NULL,
+                    duration_seconds INTEGER DEFAULT 0,
+                    UNIQUE(user_id, date, activity)
+                )
+            `);
+            console.log('Activity stats table initialized');
+        } catch (err) {
+            console.error('Migration error (activity_stats):', err.message);
+        }
+
     } catch (err) {
         console.error('Database initialization error:', err);
         throw err;

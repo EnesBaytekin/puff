@@ -231,4 +231,75 @@ router.put('/sleep', authenticateToken, async (req, res) => {
     }
 });
 
+// PUT /api/puffs/stats/activity - Save daily activity stats (batch upsert)
+router.put('/stats/activity', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { date, stats } = req.body;
+
+        if (!date || !stats || typeof stats !== 'object') {
+            return res.status(400).json({ error: 'Date and stats object are required' });
+        }
+
+        // Validate date format
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            for (const [activity, duration] of Object.entries(stats)) {
+                if (['reading', 'dancing', 'thinking', 'sleepy'].includes(activity) && typeof duration === 'number' && duration >= 0) {
+                    // Upsert: insert or add to existing
+                    await client.query(`
+                        INSERT INTO activity_stats (user_id, date, activity, duration_seconds)
+                        VALUES ($1, $2, $3, $4)
+                        ON CONFLICT (user_id, date, activity)
+                        DO UPDATE SET duration_seconds = activity_stats.duration_seconds + $4
+                    `, [userId, date, activity, Math.round(duration)]);
+                }
+            }
+            await client.query('COMMIT');
+            res.json({ success: true });
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        } finally {
+            client.release();
+        }
+    } catch (err) {
+        console.error('Save activity stats error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// GET /api/puffs/stats/activity?date=2026-05-30 - Get daily activity stats
+router.get('/stats/activity', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const date = req.query.date || new Date().toISOString().slice(0, 10);
+
+        // Validate date format
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+            return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+        }
+
+        const result = await pool.query(
+            'SELECT activity, duration_seconds FROM activity_stats WHERE user_id = $1 AND date = $2',
+            [userId, date]
+        );
+
+        const stats = {};
+        result.rows.forEach(row => {
+            stats[row.activity] = row.duration_seconds;
+        });
+
+        res.json({ date, stats });
+    } catch (err) {
+        console.error('Get activity stats error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 module.exports = router;
