@@ -2,7 +2,7 @@ const socketIo = require('socket.io');
 
 // Active rooms and their users: Map<roomName, Map<userId, userData>>
 const rooms = new Map();
-const AWAY_TIMEOUT = 3 * 60 * 1000; // 3 minutes grace period for mobile disconnects
+const AWAY_TIMEOUT = 10 * 60 * 1000; // 10 minutes grace period for mobile disconnects
 
 // Disconnect timeout IDs per room per user: Map<roomName, Map<userId, timeoutId>>
 const awayTimeouts = new Map();

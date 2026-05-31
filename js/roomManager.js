@@ -1466,16 +1466,18 @@ class RoomManager {
             emoji: this.currentReaction ? this.getActivityEmoji(this.getActivityForReaction(this.currentReaction)) : '💤',
             activity: this.currentReaction ? this.getActivityForReaction(this.currentReaction) : 'idle',
             dur: this.getCurrentActivityDuration(),
-            isOwn: true
+            isOwn: true,
+            isAway: false
         });
-        // Remote users (only those currently connected)
+        // Remote users
         this.remotePuffs.forEach((puff, uid) => {
-            const emoji = puff.remoteReaction ? this.getActivityEmoji(this.getActivityForReaction(puff.remoteReaction)) : '💤';
+            const emoji = puff.isAway ? '💤' : (puff.remoteReaction ? this.getActivityEmoji(this.getActivityForReaction(puff.remoteReaction)) : '💤');
             onlineUsers.push({
                 userId: uid, name: puff.displayName, emoji,
                 activity: puff.remoteReaction ? this.getActivityForReaction(puff.remoteReaction) : 'idle',
                 dur: puff.remoteActivityDuration || 0,
-                isOwn: false
+                isOwn: false,
+                isAway: puff.isAway || false
             });
         });
 
@@ -1484,9 +1486,12 @@ class RoomManager {
             onlineUsers.forEach(u => {
                 const cls = u.isOwn ? ' online-item-own' : '';
                 html += `<div class="online-item${cls}">`;
-                html += `<span class="online-dot"></span>`;
+                const dotClass = u.isAway ? 'online-dot away' : 'online-dot';
+                html += `<span class="${dotClass}"></span>`;
                 html += `<span class="online-name">${u.name}</span>`;
-                if (u.emoji !== '💤') {
+                if (u.isAway) {
+                    html += `<span class="online-activity" style="opacity:0.4;">💤 away</span>`;
+                } else if (u.emoji !== '💤') {
                     html += `<span class="online-activity">${u.emoji}</span>`;
                     html += `<span class="online-duration">${u.dur >= 10 ? this.formatDuration(u.dur) : 'just now'}</span>`;
                 } else {

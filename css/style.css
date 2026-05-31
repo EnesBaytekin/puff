@@ -1987,6 +1987,10 @@ body.theme-dark .room-leave-btn {
     flex-shrink: 0;
 }
 
+.online-dot.away {
+    background: rgba(255, 255, 255, 0.25);
+}
+
 .stats-total-row {
     text-align: center;
     font-size: 13px;
