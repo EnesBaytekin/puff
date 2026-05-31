@@ -18,6 +18,20 @@ class RoomManager {
         this._chatBubbleTimers = new Map(); // userId -> setTimeout id
         this._chatInitialized = false;
         this._chatOpen = false;
+
+        // Activity timer tracking
+        this.activityStartTime = null; // timestamp when current activity started
+        this.sessionHistory = []; // [{activity, emoji, startTime, endTime, duration}]
+        this.lastDurationPing = 0; // for throttling duration-only updates
+        this._statsInitialized = false;
+        this._statsOpen = false;
+        this._statsRefreshInterval = null;
+
+        // Room timer (shared countdown for everyone in room)
+        this.roomTimerEnd = null; // timestamp when room timer ends (null = no timer)
+        this.roomTimerStartTime = null; // when the timer was started
+        this.roomTimerSetterId = null; // userId of who set it
+        this._timerBarInterval = null;
     }
 
     connect() {
@@ -87,6 +101,17 @@ class RoomManager {
                 this.addRemotePuff(user.userId, user.puffData);
             });
 
+            // Load room timer
+            if (data.roomTimer && data.roomTimer.endTime) {
+                this.roomTimerEnd = data.roomTimer.endTime;
+                this.roomTimerStartTime = data.roomTimer.startTime || null;
+                this.roomTimerSetterId = data.roomTimer.userId || null;
+            } else {
+                this.roomTimerEnd = null;
+                this.roomTimerStartTime = null;
+                this.roomTimerSetterId = null;
+            }
+
             // Update UI
             this.updateRoomUI();
             this.startSendingPosition();
@@ -130,6 +155,7 @@ class RoomManager {
                 puff.remoteTargetState = data.state || null;
                 puff.remoteTargetSleeping = data.isSleeping;
                 puff.remoteReaction = data.reaction || null;
+                puff.remoteActivityDuration = data.activityDuration || 0;
 
                 // Update user data for name display
                 const userData = this.remoteUsers.get(data.userId);
@@ -157,6 +183,21 @@ class RoomManager {
             this._chatBubbleTimers.set(data.userId, timer);
 
             this.updateChatUI();
+        });
+
+        this.socket.on('room_timer', (data) => {
+            console.log('[Room] Room timer update:', data);
+            if (data && data.endTime) {
+                this.roomTimerEnd = data.endTime;
+                this.roomTimerStartTime = data.startTime || null;
+                this.roomTimerSetterId = data.userId || null;
+            } else {
+                this.roomTimerEnd = null;
+                this.roomTimerStartTime = null;
+                this.roomTimerSetterId = null;
+            }
+            this.updateSharedTimerBar();
+            if (this._statsOpen) this.updateStatsUI();
         });
     }
 
@@ -261,12 +302,27 @@ class RoomManager {
         if (chatToggle) chatToggle.classList.add('visible');
         this.setupChatPanel();
 
-        // Re-open chat panel if it was open
+        // Show stats toggle
+        const statsToggle = document.getElementById('room-stats-toggle');
+        if (statsToggle) statsToggle.classList.add('visible');
+        this.setupStatsPanel();
+
+        // Start shared timer bar updater
+        this.startTimerBar();
+
+        // Re-open panels if they were open
         if (this._chatOpen) {
             const panel = document.getElementById('room-chat-panel');
             if (panel) {
                 panel.classList.add('open');
                 this.updateChatUI();
+            }
+        }
+        if (this._statsOpen) {
+            const panel = document.getElementById('room-stats-panel');
+            if (panel) {
+                panel.classList.add('open');
+                this.updateStatsUI();
             }
         }
 
@@ -307,6 +363,16 @@ class RoomManager {
         const chatPanel = document.getElementById('room-chat-panel');
         if (chatPanel) chatPanel.classList.remove('open');
         this._chatOpen = false;
+
+        // Hide shared timer bar
+        this.stopTimerBar();
+
+        // Hide stats toggle and panel
+        const statsToggle = document.getElementById('room-stats-toggle');
+        if (statsToggle) statsToggle.classList.remove('visible');
+        const statsPanel = document.getElementById('room-stats-panel');
+        if (statsPanel) statsPanel.classList.remove('open');
+        this._statsOpen = false;
     }
 
     leaveRoom() {
@@ -315,6 +381,11 @@ class RoomManager {
 
         if (this.socket && this.socket.connected) {
             this.socket.emit('leave_room');
+        }
+
+        // Log current activity before leaving
+        if (this.currentReaction) {
+            this.logActivitySession(this.currentReaction);
         }
 
         // Remove all remote puffs
@@ -327,6 +398,16 @@ class RoomManager {
         this._chatBubbleTimers.forEach(t => clearTimeout(t));
         this._chatBubbleTimers.clear();
         this._chatOpen = false;
+        this.activityStartTime = null;
+        this._statsOpen = false;
+        this.roomTimerEnd = null;
+        this.roomTimerStartTime = null;
+        this.roomTimerSetterId = null;
+        this.stopTimerBar();
+        if (this._statsRefreshInterval) {
+            clearInterval(this._statsRefreshInterval);
+            this._statsRefreshInterval = null;
+        }
 
         // Clear local creature's activity visual
         if (this.appView.creature) {
@@ -369,14 +450,21 @@ class RoomManager {
                 energy: creature.puffState.energy
             },
             isSleeping: creature.isSleeping || false,
-            reaction: this.currentReaction
+            reaction: this.currentReaction,
+            activityDuration: this.getCurrentActivityDuration()
         };
 
         // Throttle: only send if data changed meaningfully
+        const now = Date.now();
         const dataKey = `${data.x},${data.y},${data.isSleeping},${data.reaction}`;
         if (dataKey !== this.lastSentData) {
             this.socket.emit('puff_update', data);
             this.lastSentData = dataKey;
+            this.lastDurationPing = now;
+        } else if (this.currentReaction && now - this.lastDurationPing > 5000) {
+            // Periodic ping to sync activity duration (every 5s even if idle)
+            this.socket.emit('puff_update', data);
+            this.lastDurationPing = now;
         }
     }
 
@@ -402,6 +490,7 @@ class RoomManager {
         puff.remoteTargetState = puffData.state || null;
         puff.remoteTargetSleeping = puffData.isSleeping || false;
         puff.remoteReaction = puffData.reaction || null;
+        puff.remoteActivityDuration = puffData.activityDuration || 0;
         puff.displayName = puffData.name || 'Puff';
 
         // Set initial activity based on reaction data
@@ -418,6 +507,12 @@ class RoomManager {
 
     handleDisconnect() {
         this.stopSendingPosition();
+
+        // Log current activity before clearing (capture before nulling)
+        if (this.currentReaction) {
+            this.logActivitySession(this.currentReaction);
+        }
+
         this.remotePuffs.clear();
         this.remoteUsers.clear();
         this.currentRoom = null;
@@ -437,6 +532,15 @@ class RoomManager {
         this._chatBubbleTimers.forEach(t => clearTimeout(t));
         this._chatBubbleTimers.clear();
         this._chatOpen = false;
+        this.activityStartTime = null;
+        this._statsOpen = false;
+        this.roomTimerEnd = null;
+        this.roomTimerStartTime = null;
+        this.roomTimerSetterId = null;
+        if (this._statsRefreshInterval) {
+            clearInterval(this._statsRefreshInterval);
+            this._statsRefreshInterval = null;
+        }
     }
 
     // Called each frame from game loop to update remote puff positions
@@ -509,6 +613,11 @@ class RoomManager {
 
                 // Chat speech bubble
                 this.drawChatBubble(ctx, puff, userId);
+
+                // Activity duration badge
+                if (puff.remoteReaction) {
+                    this.drawDurationBadge(ctx, puff, puff.remoteActivityDuration);
+                }
             }
         });
     }
@@ -551,6 +660,11 @@ class RoomManager {
         // Chat speech bubble for local user
         const myId = API.getUserId();
         this.drawChatBubble(ctx, creature, myId);
+
+        // Activity duration badge for local puff
+        if (this.currentReaction) {
+            this.drawDurationBadge(ctx, creature, this.getCurrentActivityDuration());
+        }
     }
 
     updateRoomUI() {
@@ -590,12 +704,26 @@ class RoomManager {
 
     // Set or toggle a reaction emoji (null to clear)
     setReaction(emoji) {
+        const previousReaction = this.currentReaction;
+
         if (this.currentReaction === emoji) {
             this.currentReaction = null; // Toggle off
         } else {
             this.currentReaction = emoji; // Toggle on
         }
         this.updateReactionButtonUI();
+
+        // Log previous activity session if switching
+        if (previousReaction && this.activityStartTime) {
+            this.logActivitySession(previousReaction);
+        }
+
+        // Reset timer for new activity
+        if (this.currentReaction) {
+            this.activityStartTime = Date.now();
+        } else {
+            this.activityStartTime = null;
+        }
 
         // Update local creature's activity for visual rendering
         const creature = this.appView.creature;
@@ -778,6 +906,404 @@ class RoomManager {
         ctx.textBaseline = 'bottom';
         ctx.fillText(truncated, bx, by - 3);
         ctx.restore();
+    }
+
+    // --- Activity Timer & Stats ---
+
+    getActivityEmoji(activity) {
+        const map = { 'reading': '📖', 'dancing': '💃', 'sleepy': '😴', 'thinking': '🤔' };
+        return map[activity] || '❓';
+    }
+
+    getCurrentActivityDuration() {
+        if (!this.currentReaction || !this.activityStartTime) return 0;
+        return Math.floor((Date.now() - this.activityStartTime) / 1000);
+    }
+
+    formatDuration(seconds) {
+        if (seconds < 60) return `${seconds}s`;
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        if (m < 60) return `${m}:${s.toString().padStart(2, '0')}`;
+        const h = Math.floor(m / 60);
+        return `${h}h ${m % 60}m`;
+    }
+
+    logActivitySession(reaction) {
+        if (!this.activityStartTime) return;
+        const activity = this.getActivityForReaction(reaction);
+        const duration = Math.floor((Date.now() - this.activityStartTime) / 1000);
+        if (duration < 10) return; // Ignore sessions shorter than 10s
+
+        const session = {
+            activity,
+            emoji: this.getActivityEmoji(activity),
+            startTime: this.activityStartTime,
+            endTime: Date.now(),
+            duration
+        };
+        this.sessionHistory.push(session);
+
+        // Save to daily stats in localStorage
+        this.saveDailyStats(activity, duration);
+        this.updateStatsUI();
+    }
+
+    loadDailyStats() {
+        try {
+            const raw = localStorage.getItem('puff-activity-stats');
+            return raw ? JSON.parse(raw) : {};
+        } catch { return {}; }
+    }
+
+    saveDailyStats(activity, seconds) {
+        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        const stats = this.loadDailyStats();
+        if (!stats[today]) stats[today] = {};
+        stats[today][activity] = (stats[today][activity] || 0) + seconds;
+        localStorage.setItem('puff-activity-stats', JSON.stringify(stats));
+    }
+
+    getTodayStats() {
+        const today = new Date().toISOString().slice(0, 10);
+        return this.loadDailyStats()[today] || {};
+    }
+
+    drawDurationBadge(ctx, puff, durationSeconds) {
+        if (!durationSeconds || durationSeconds < 5) return;
+        const text = this.formatDuration(durationSeconds);
+        const bx = puff.centerParticle.x;
+        const by = puff.centerParticle.y - puff.radius * 1.1;
+
+        ctx.save();
+        ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        const metrics = ctx.measureText(text);
+        const padding = 6;
+        const bw = metrics.width + padding * 2;
+        const bh = 18;
+        const rx = bx - bw / 2;
+        const ry = by - bh;
+
+        // Semi-transparent dark badge
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(rx, ry, bw, bh, 6);
+            ctx.fill();
+        } else {
+            ctx.fillRect(rx, ry, bw, bh);
+        }
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.font = '11px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(text, bx, by - 2);
+        ctx.restore();
+    }
+
+    // --- Room Timer (shared countdown for the whole room) ---
+
+    getRoomTimerElapsed() {
+        if (!this.roomTimerEnd) return 0;
+        return Math.floor((Date.now() - this.roomTimerEnd + this.getRoomTimerDuration() * 1000) / 1000);
+    }
+
+    getRoomTimerRemaining() {
+        if (!this.roomTimerEnd) return 0;
+        return Math.max(0, Math.floor((this.roomTimerEnd - Date.now()) / 1000));
+    }
+
+    getRoomTimerDuration() {
+        if (!this.roomTimerEnd || !this.roomTimerStartTime) return 0;
+        return Math.floor((this.roomTimerEnd - this.roomTimerStartTime) / 1000);
+    }
+
+    getRoomTimerProgress() {
+        if (!this.roomTimerEnd || !this.roomTimerStartTime) return 0;
+        const total = this.getRoomTimerDuration();
+        if (total <= 0) return 0;
+        const remaining = this.getRoomTimerRemaining();
+        return 1 - (remaining / total);
+    }
+
+    isRoomTimerComplete() {
+        return this.roomTimerEnd !== null && Date.now() >= this.roomTimerEnd;
+    }
+
+    setRoomTimer(seconds) {
+        const endTime = Date.now() + seconds * 1000;
+        this.roomTimerEnd = endTime;
+        this.roomTimerStartTime = Date.now();
+        this.roomTimerSetterId = API.getUserId();
+
+        // Send to server to broadcast
+        if (this.socket && this.socket.connected && this.currentRoom) {
+            this.socket.emit('room_timer', { endTime, startTime: this.roomTimerStartTime, userId: API.getUserId() });
+        }
+
+        this.updateSharedTimerBar();
+        if (this._statsOpen) this.updateStatsUI();
+    }
+
+    cancelRoomTimer() {
+        this.roomTimerEnd = null;
+        this.roomTimerStartTime = null;
+        this.roomTimerSetterId = null;
+
+        if (this.socket && this.socket.connected && this.currentRoom) {
+            this.socket.emit('room_timer', { endTime: null, startTime: null, userId: API.getUserId() });
+        }
+
+        this.updateSharedTimerBar();
+        if (this._statsOpen) this.updateStatsUI();
+    }
+
+    // --- Shared Timer Bar (visible to everyone in room) ---
+
+    startTimerBar() {
+        this.stopTimerBar();
+        this.updateSharedTimerBar();
+        this._timerBarInterval = setInterval(() => this.updateSharedTimerBar(), 1000);
+
+        // Click on timer bar opens stats panel
+        const bar = document.getElementById('room-timer-bar');
+        if (bar && !bar.dataset.timerBarInit) {
+            bar.dataset.timerBarInit = '1';
+            bar.addEventListener('click', () => {
+                this.toggleStatsPanel();
+            });
+        }
+    }
+
+    stopTimerBar() {
+        if (this._timerBarInterval) {
+            clearInterval(this._timerBarInterval);
+            this._timerBarInterval = null;
+        }
+        const bar = document.getElementById('room-timer-bar');
+        if (bar) bar.style.display = 'none';
+    }
+
+    updateSharedTimerBar() {
+        const bar = document.getElementById('room-timer-bar');
+        if (!bar) return;
+
+        if (!this.roomTimerEnd || Date.now() >= this.roomTimerEnd) {
+            if (this.roomTimerEnd && Date.now() >= this.roomTimerEnd) {
+                // Timer just completed — show briefly
+                const timeEl = document.getElementById('room-timer-time');
+                const fillEl = document.getElementById('room-timer-fill');
+                if (timeEl) timeEl.textContent = '⏰ Time\'s up!';
+                if (fillEl) fillEl.style.width = '100%';
+                bar.style.display = 'flex';
+            } else {
+                bar.style.display = 'none';
+            }
+            return;
+        }
+
+        const remaining = this.getRoomTimerRemaining();
+        const progress = this.getRoomTimerProgress();
+
+        bar.style.display = 'flex';
+
+        const timeEl = document.getElementById('room-timer-time');
+        const fillEl = document.getElementById('room-timer-fill');
+
+        if (timeEl) {
+            const m = Math.floor(remaining / 60);
+            const s = remaining % 60;
+            timeEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        if (fillEl) {
+            fillEl.style.width = (progress * 100) + '%';
+        }
+    }
+
+    // --- Stats Panel ---
+
+    setupStatsPanel() {
+        if (this._statsInitialized) return;
+        this._statsInitialized = true;
+
+        const toggle = document.getElementById('room-stats-toggle');
+        const closeBtn = document.getElementById('room-stats-close-btn');
+        if (toggle) toggle.addEventListener('click', () => this.toggleStatsPanel());
+        if (closeBtn) closeBtn.addEventListener('click', () => this.closeStatsPanel());
+
+        // Timer preset buttons (event delegation on the content area)
+        const content = document.getElementById('room-stats-content');
+        if (content) {
+            content.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-timer-preset]');
+                if (btn) {
+                    this.setRoomTimer(parseInt(btn.dataset.timerPreset));
+                    return;
+                }
+                const cancelBtn = e.target.closest('#timer-cancel-btn');
+                if (cancelBtn) {
+                    this.cancelRoomTimer();
+                    return;
+                }
+            });
+        }
+    }
+
+    toggleStatsPanel() {
+        const panel = document.getElementById('room-stats-panel');
+        if (!panel) return;
+        panel.classList.toggle('open');
+        this._statsOpen = panel.classList.contains('open');
+        if (this._statsOpen) {
+            this.updateStatsUI();
+            // Auto-refresh every 2s while open
+            if (this._statsRefreshInterval) clearInterval(this._statsRefreshInterval);
+            this._statsRefreshInterval = setInterval(() => {
+                if (this._statsOpen) this.updateStatsUI();
+                else {
+                    clearInterval(this._statsRefreshInterval);
+                    this._statsRefreshInterval = null;
+                }
+            }, 2000);
+        } else {
+            if (this._statsRefreshInterval) {
+                clearInterval(this._statsRefreshInterval);
+                this._statsRefreshInterval = null;
+            }
+        }
+    }
+
+    closeStatsPanel() {
+        const panel = document.getElementById('room-stats-panel');
+        if (panel) panel.classList.remove('open');
+        this._statsOpen = false;
+        if (this._statsRefreshInterval) {
+            clearInterval(this._statsRefreshInterval);
+            this._statsRefreshInterval = null;
+        }
+    }
+
+    updateStatsUI() {
+        const container = document.getElementById('room-stats-content');
+        if (!container) return;
+
+        const panel = document.getElementById('room-stats-panel');
+        if (!panel || !panel.classList.contains('open')) return;
+
+        let html = '';
+
+        // — Room Timer (shared countdown for the whole room) —
+        html += '<div class="stats-section"><div class="stats-section-title">⏱ Room Timer</div>';
+        if (!this.roomTimerEnd || Date.now() >= this.roomTimerEnd) {
+            // Presets — anyone can start a room timer
+            html += '<div class="timer-presets">';
+            [600, 1500, 2700, 3600].forEach(s => {
+                const label = s >= 3600 ? `${s/3600}h` : `${s/60}m`;
+                html += `<button class="timer-preset-btn" data-timer-preset="${s}">${label}</button>`;
+            });
+            html += '</div>';
+            html += '<div class="timer-custom-row">';
+            html += '<input type="number" id="timer-custom-input" class="timer-custom-input" placeholder="min" min="1" max="480">';
+            html += '<button class="timer-preset-btn" data-timer-preset-selector>Set</button>';
+            html += '</div>';
+            if (Date.now() >= this.roomTimerEnd && this.roomTimerEnd) {
+                html += '<div class="timer-complete" style="margin-top:6px;">⏰ Time\'s up!</div>';
+            }
+        } else {
+            // Timer is running
+            const remaining = this.getRoomTimerRemaining();
+            const progress = this.getRoomTimerProgress();
+
+            html += `<div class="timer-display">`;
+            const m = Math.floor(remaining / 60);
+            const s = remaining % 60;
+            html += `<div class="timer-time">${m}:${s.toString().padStart(2, '0')}</div>`;
+            html += `<div class="timer-bar"><div class="timer-bar-fill" style="width:${progress*100}%"></div></div>`;
+            html += '</div>';
+            html += '<div class="timer-controls">';
+            html += `<button id="timer-cancel-btn" class="timer-btn timer-btn-reset">✕ Cancel Timer</button>`;
+            html += '</div>';
+        }
+        html += '</div>';
+
+        // — Room Activity (individual durations) —
+        html += '<div class="stats-section"><div class="stats-section-title">📖 Room Activity</div>';
+        const roomUsers = [];
+
+        // Local user
+        if (this.currentReaction) {
+            const activity = this.getActivityForReaction(this.currentReaction);
+            const emoji = this.getActivityEmoji(activity);
+            const dur = this.getCurrentActivityDuration();
+            roomUsers.push({ name: this.appView.puffName || 'You', emoji, activity, duration: dur, isOwn: true });
+        }
+
+        // Remote users
+        this.remotePuffs.forEach((puff, userId) => {
+            if (puff.remoteReaction) {
+                const activity = this.getActivityForReaction(puff.remoteReaction);
+                const emoji = this.getActivityEmoji(activity);
+                roomUsers.push({ name: puff.displayName, emoji, activity, duration: puff.remoteActivityDuration || 0, isOwn: false });
+            }
+        });
+
+        if (roomUsers.length === 0) {
+            html += '<div class="stats-empty">No one is active yet</div>';
+        } else {
+            roomUsers.forEach(u => {
+                const cls = u.isOwn ? ' stats-row-own' : '';
+                const timeStr = u.duration >= 10 ? this.formatDuration(u.duration) : 'just started';
+                html += `<div class="stats-row${cls}"><span>${u.emoji} ${u.name}</span><span class="stats-duration">${timeStr}</span></div>`;
+            });
+        }
+        html += '</div>';
+
+        // — Today's Totals —
+        const todayStats = this.getTodayStats();
+        const totalSeconds = Object.values(todayStats).reduce((a, b) => a + b, 0);
+        html += `<div class="stats-section"><div class="stats-section-title">📊 Today</div>`;
+        if (totalSeconds === 0) {
+            html += '<div class="stats-empty">No activity yet</div>';
+        } else {
+            const order = ['reading', 'dancing', 'thinking', 'sleepy'];
+            order.forEach(a => {
+                if (todayStats[a]) {
+                    html += `<div class="stats-row"><span>${this.getActivityEmoji(a)} ${a}</span><span class="stats-duration">${this.formatDuration(todayStats[a])}</span></div>`;
+                }
+            });
+            html += `<div class="stats-row stats-total"><span>Total</span><span class="stats-duration">${this.formatDuration(totalSeconds)}</span></div>`;
+        }
+        html += '</div>';
+
+        container.innerHTML = html;
+
+        // Handle custom input "Set" button (re-attach since innerHTML replaced it)
+        const setBtn = container.querySelector('[data-timer-preset-selector]');
+        if (setBtn) {
+            setBtn.addEventListener('click', () => {
+                const input = document.getElementById('timer-custom-input');
+                if (input) {
+                    const val = parseInt(input.value);
+                    if (val && val > 0 && val <= 480) {
+                        this.setRoomTimer(val * 60);
+                    }
+                }
+            });
+        }
+        const customInput = document.getElementById('timer-custom-input');
+        if (customInput) {
+            customInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const val = parseInt(customInput.value);
+                    if (val && val > 0 && val <= 480) {
+                        this.setRoomTimer(val * 60);
+                    }
+                }
+            });
+        }
     }
 
     cleanup() {

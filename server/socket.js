@@ -61,7 +61,8 @@ function setupSocket(server) {
             socket.emit('room_joined', {
                 roomName,
                 users: currentUsers,
-                chatHistory: roomData.chatHistory || []
+                chatHistory: roomData.chatHistory || [],
+                roomTimer: roomData.roomTimer || null
             });
 
             // Broadcast to others that a new user joined
@@ -78,6 +79,19 @@ function setupSocket(server) {
                 currentUserId = null;
                 socket.emit('room_left');
             }
+        });
+
+        socket.on('room_timer', (data) => {
+            if (!currentRoom || !currentUserId) return;
+            const room = rooms.get(currentRoom);
+            if (!room) return;
+
+            const { endTime, userId: timerUserId, startTime } = data;
+            // Store room-level timer
+            room.roomTimer = { endTime: endTime || null, startTime: startTime || null, userId: timerUserId || currentUserId };
+
+            // Broadcast to ALL in room
+            io.to(currentRoom).emit('room_timer', room.roomTimer);
         });
 
         socket.on('chat_message', (data) => {

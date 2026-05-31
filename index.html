@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="description" content="A calm, satisfying digital toy with soft-body physics">
     <title>Puff Pet</title>
-    <link rel="stylesheet" href="css/style.css?v=5">
+    <link rel="stylesheet" href="css/style.css?v=6">
 </head>
 <body>
     <!-- Login View -->
@@ -209,6 +209,18 @@
                 <span class="room-mode-indicator">🌐</span>
                 <span class="room-mode-name" id="room-mode-name">Room</span>
             </div>
+
+            <!-- Shared Timer Bar -->
+            <div class="room-timer-bar" id="room-timer-bar" style="display:none;">
+                <div class="room-timer-info">
+                    <span class="room-timer-icon">⏱</span>
+                    <span class="room-timer-time" id="room-timer-time">00:00</span>
+                </div>
+                <div class="room-timer-progress" id="room-timer-progress">
+                    <div class="room-timer-fill" id="room-timer-fill"></div>
+                </div>
+            </div>
+
             <button id="room-mode-exit-btn" class="room-mode-exit-btn">
                 <span class="btn-icon">🚪</span>
                 <span class="btn-text">Leave Room</span>
@@ -237,6 +249,18 @@
             </div>
         </div>
         <button id="room-chat-toggle" class="room-chat-toggle">💬</button>
+        <button id="room-stats-toggle" class="room-stats-toggle">📊</button>
+
+        <!-- Room Stats Panel -->
+        <div class="room-stats-panel" id="room-stats-panel">
+            <div class="room-stats-header">
+                <span>📊 Stats</span>
+                <button id="room-stats-close-btn" class="room-stats-close-btn">✕</button>
+            </div>
+            <div class="room-stats-content" id="room-stats-content">
+                <div class="stats-empty">Loading...</div>
+            </div>
+        </div>
 
         <!-- Room Panel -->
         <div class="panel-overlay" id="room-overlay"></div>
@@ -341,37 +365,37 @@
     </div>
 
     <!-- Scripts -->
-    <script src="js/physics/particle.js?v=5"></script>
-    <script src="js/physics/constraint.js?v=5"></script>
-    <script src="js/physics/softbody.js?v=5"></script>
-    <script src="js/physics/solver.js?v=5"></script>
-    <script src="js/canvas.js?v=5"></script>
-    <script src="js/input.js?v=5"></script>
-    <script src="js/stateManager.js?v=5"></script>
-    <script src="js/food.js?v=5"></script>
-    <script src="js/themeManager.js?v=5"></script>
-    <script src="js/globalSettings.js?v=5"></script>
+    <script src="js/physics/particle.js?v=6"></script>
+    <script src="js/physics/constraint.js?v=6"></script>
+    <script src="js/physics/softbody.js?v=6"></script>
+    <script src="js/physics/solver.js?v=6"></script>
+    <script src="js/canvas.js?v=6"></script>
+    <script src="js/input.js?v=6"></script>
+    <script src="js/stateManager.js?v=6"></script>
+    <script src="js/food.js?v=6"></script>
+    <script src="js/themeManager.js?v=6"></script>
+    <script src="js/globalSettings.js?v=6"></script>
 
     <!-- Socket.IO client (served by server) -->
     <script src="/socket.io/socket.io.js"></script>
 
     <!-- Minigame Scripts -->
-    <script src="js/minigame/minigame.js?v=5"></script>
-    <script src="js/minigame/particleEffect.js?v=5"></script>
-    <script src="js/minigame/targetCircle.js?v=5"></script>
-    <script src="js/minigame/driftSolver.js?v=5"></script>
-    <script src="js/minigame/driftGame.js?v=5"></script>
-    <script src="js/minigame/minigameManager.js?v=5"></script>
+    <script src="js/minigame/minigame.js?v=6"></script>
+    <script src="js/minigame/particleEffect.js?v=6"></script>
+    <script src="js/minigame/targetCircle.js?v=6"></script>
+    <script src="js/minigame/driftSolver.js?v=6"></script>
+    <script src="js/minigame/driftGame.js?v=6"></script>
+    <script src="js/minigame/minigameManager.js?v=6"></script>
 
     <!-- Room Manager -->
-    <script src="js/roomManager.js?v=5"></script>
+    <script src="js/roomManager.js?v=6"></script>
 
-    <script src="js/api.js?v=5"></script>
-    <script src="js/router.js?v=5"></script>
-    <script src="js/views/login.js?v=5"></script>
-    <script src="js/views/register.js?v=5"></script>
-    <script src="js/views/customize.js?v=5"></script>
-    <script src="js/views/app.js?v=5"></script>
+    <script src="js/api.js?v=6"></script>
+    <script src="js/router.js?v=6"></script>
+    <script src="js/views/login.js?v=6"></script>
+    <script src="js/views/register.js?v=6"></script>
+    <script src="js/views/customize.js?v=6"></script>
+    <script src="js/views/app.js?v=6"></script>
 
     <!-- Initialize router when DOM loads -->
     <script>
