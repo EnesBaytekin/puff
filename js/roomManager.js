@@ -38,6 +38,7 @@ class RoomManager {
         this._roomStatsSyncInterval = null;
         this._lastRoomStatsSyncTime = Date.now();
         this._reconnecting = false;
+        this._disconnectAt = null;
     }
 
     connect() {
@@ -89,11 +90,8 @@ class RoomManager {
                 // Graceful disconnect: keep room state, don't exit room mode
                 this.reconnectRoom = this.currentRoom;
 
-                // Log current activity session and reset timer to avoid double-counting
-                if (this.currentReaction && this.activityStartTime) {
-                    this.logActivitySession(this.currentReaction);
-                    this.activityStartTime = null;
-                }
+                // Record disconnect time so we can adjust activity timer on reconnect
+                this._disconnectAt = Date.now();
 
                 // Clear remote puffs — they'll be re-populated on reconnect
                 this.remotePuffs.clear();
@@ -149,6 +147,7 @@ class RoomManager {
 
             if (this._reconnecting) {
                 this._reconnecting = false;
+                this._disconnectAt = null;
                 this.updateReconnectingUI();
             } else {
                 // Enter room mode only on fresh join, not reconnect
@@ -179,6 +178,10 @@ class RoomManager {
             const puff = this.remotePuffs.get(data.userId);
             if (puff) {
                 puff.isAway = false;
+                // Restore activity duration so badge shows immediately
+                if (data.activityDuration !== undefined) {
+                    puff.remoteActivityDuration = data.activityDuration;
+                }
                 // Update position from server data
                 if (data.puffData) {
                     puff.remoteNormX = data.puffData.x !== undefined ? data.puffData.x : 0.5;
@@ -1084,8 +1087,14 @@ class RoomManager {
         } catch { return {}; }
     }
 
+    getTodayKey() {
+        const d = new Date();
+        const offset = d.getTimezoneOffset() * 60000;
+        return new Date(d.getTime() - offset).toISOString().slice(0, 10);
+    }
+
     saveDailyStats(activity, seconds) {
-        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+        const today = this.getTodayKey();
         const stats = this.loadDailyStats();
         if (!stats[today]) stats[today] = {};
         stats[today][activity] = (stats[today][activity] || 0) + seconds;
@@ -1093,8 +1102,7 @@ class RoomManager {
     }
 
     getTodayStats() {
-        const today = new Date().toISOString().slice(0, 10);
-        return this.loadDailyStats()[today] || {};
+        return this.loadDailyStats()[this.getTodayKey()] || {};
     }
 
     // --- Room-level cumulative activity stats ---

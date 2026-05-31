@@ -57,7 +57,8 @@ function setupSocket(server) {
                 // Notify others that user is back
                 socket.to(roomName).emit('user_back', {
                     userId,
-                    puffData: existingUser.puffData
+                    puffData: existingUser.puffData,
+                    activityDuration: existingUser.puffData.activityDuration || 0
                 });
 
                 // Send room_joined with full state back to the reconnecting client
