@@ -35,6 +35,8 @@ class RoomManager {
 
         // Room-level cumulative activity stats: { userId: { name, activities: { reading: 300, dancing: 0, ... } } }
         this.roomActivityStats = {};
+        this._roomStatsSyncInterval = null;
+        this._lastRoomStatsSyncTime = Date.now();
     }
 
     connect() {
@@ -332,6 +334,9 @@ class RoomManager {
         // Start shared timer bar updater
         this.startTimerBar();
 
+        // Start periodic room stats sync (every 10s)
+        this.startRoomStatsSync();
+
         // Re-open panels if they were open
         if (this._chatOpen) {
             const panel = document.getElementById('room-chat-panel');
@@ -386,8 +391,9 @@ class RoomManager {
         if (chatPanel) chatPanel.classList.remove('open');
         this._chatOpen = false;
 
-        // Hide shared timer bar
+        // Hide shared timer bar and stop room stats sync
         this.stopTimerBar();
+        this.stopRoomStatsSync();
 
         // Hide stats toggle and panel
         const statsToggle = document.getElementById('room-stats-toggle');
@@ -429,6 +435,7 @@ class RoomManager {
         this.roomTimerSetterId = null;
         this.roomActivityStats = {};
         this.stopTimerBar();
+        this.stopRoomStatsSync();
         if (this._statsRefreshInterval) {
             clearInterval(this._statsRefreshInterval);
             this._statsRefreshInterval = null;
@@ -1021,22 +1028,37 @@ class RoomManager {
     }
 
     addToRoomActivityStats(activity, seconds) {
-        if (!this.currentRoom || seconds < 10) return;
+        if (!this.currentRoom || seconds <= 0) return;
         const stats = this.loadRoomStats();
         const myId = API.getUserId();
         if (!stats[myId]) stats[myId] = { name: this.appView.puffName || 'You', activities: {} };
         stats[myId].name = this.appView.puffName || 'You';
         stats[myId].activities[activity] = (stats[myId].activities[activity] || 0) + seconds;
         this.saveRoomStats(stats);
+
+        // Also update in-memory roomActivityStats so UI refreshes immediately
+        if (!this.roomActivityStats[myId]) {
+            this.roomActivityStats[myId] = { name: this.appView.puffName || 'You', activities: {} };
+        }
+        this.roomActivityStats[myId].name = this.appView.puffName || 'You';
+        this.roomActivityStats[myId].activities[activity] = stats[myId].activities[activity];
     }
 
     syncRoomActivityStats() {
         if (!this.socket || !this.socket.connected || !this.currentRoom) return;
-        const stats = this.loadRoomStats();
-        const myId = API.getUserId();
-        const myStats = stats[myId];
-        if (!myStats) return;
 
+        // Update local roomActivityStats so UI refreshes immediately
+        const myId = API.getUserId();
+        const localStats = this.loadRoomStats();
+        if (localStats[myId]) {
+            this.roomActivityStats[myId] = {
+                name: localStats[myId].name || this.appView.puffName || 'You',
+                activities: { ...localStats[myId].activities }
+            };
+        }
+
+        const myStats = localStats[myId];
+        if (!myStats) return;
         this.socket.emit('room_activity_sync', {
             name: this.appView.puffName || 'You',
             activities: myStats.activities || {}
@@ -1132,6 +1154,38 @@ class RoomManager {
 
         this.updateSharedTimerBar();
         if (this._statsOpen) this.updateStatsUI();
+    }
+
+    // --- Room Activity Stats Sync ---
+
+    startRoomStatsSync() {
+        this.stopRoomStatsSync();
+        this._lastRoomStatsSyncTime = Date.now();
+        this._roomStatsSyncInterval = setInterval(() => {
+            // Accumulate current activity time to room stats
+            if (this.currentReaction) {
+                const activity = this.getActivityForReaction(this.currentReaction);
+                const now = Date.now();
+                const delta = Math.floor((now - this._lastRoomStatsSyncTime) / 1000);
+                this._lastRoomStatsSyncTime = now;
+                if (delta > 0) {
+                    this.addToRoomActivityStats(activity, delta);
+                    this.syncRoomActivityStats();
+                }
+            } else {
+                this._lastRoomStatsSyncTime = Date.now();
+            }
+
+            // Also refresh stats panel if open
+            if (this._statsOpen) this.updateStatsUI();
+        }, 10000);
+    }
+
+    stopRoomStatsSync() {
+        if (this._roomStatsSyncInterval) {
+            clearInterval(this._roomStatsSyncInterval);
+            this._roomStatsSyncInterval = null;
+        }
     }
 
     // --- Shared Timer Bar (visible to everyone in room) ---
@@ -1311,9 +1365,19 @@ class RoomManager {
         const roomUsers = [];
         const allActivities = ['reading', 'dancing', 'thinking', 'sleepy'];
 
+        // Merge my own localStorage stats into roomActivityStats for instant display
+        const myId = API.getUserId();
+        const localStats = this.loadRoomStats();
+        if (localStats[myId] && Object.values(localStats[myId].activities || {}).some(v => v > 0)) {
+            this.roomActivityStats[myId] = {
+                name: localStats[myId].name || this.appView.puffName || 'You',
+                activities: { ...localStats[myId].activities }
+            };
+        }
+
         // Collect from roomActivityStats (persistent, across sessions)
         Object.entries(this.roomActivityStats).forEach(([uid, stat]) => {
-            const isOwn = uid === API.getUserId();
+            const isOwn = uid === myId;
             const hasActivity = Object.values(stat.activities || {}).some(v => v > 0);
             if (hasActivity) {
                 roomUsers.push({ userId: uid, name: stat.name || 'Unknown', activities: stat.activities || {}, isOwn });
