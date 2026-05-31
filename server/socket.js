@@ -2,6 +2,10 @@ const socketIo = require('socket.io');
 
 // Active rooms and their users: Map<roomName, Map<userId, userData>>
 const rooms = new Map();
+const AWAY_TIMEOUT = 3 * 60 * 1000; // 3 minutes grace period for mobile disconnects
+
+// Disconnect timeout IDs per room per user: Map<roomName, Map<userId, timeoutId>>
+const awayTimeouts = new Map();
 
 function setupSocket(server) {
     const io = socketIo(server, {
@@ -23,9 +27,48 @@ function setupSocket(server) {
                 return;
             }
 
+            // Check if this user is already in the room (grace period reconnect)
+            const room = rooms.get(roomName);
+            const existingUser = room && room.get(userId);
+            const isReconnect = existingUser && existingUser.away;
+
+            if (isReconnect) {
+                // Cancel the away timeout
+                cancelAwayTimeout(roomName, userId);
+
+                // Update socket reference and data
+                existingUser.socketId = socket.id;
+                existingUser.away = false;
+                existingUser.puffData = {
+                    ...existingUser.puffData,
+                    ...puffData,
+                    lastSeen: Date.now()
+                };
+
+                // Leave previous socket's room if different
+                if (currentRoom && currentRoom !== roomName) {
+                    leaveRoom(io, socket, currentRoom, currentUserId, true);
+                }
+
+                currentRoom = roomName;
+                currentUserId = userId;
+                socket.join(roomName);
+
+                // Notify others that user is back
+                socket.to(roomName).emit('user_back', {
+                    userId,
+                    puffData: existingUser.puffData
+                });
+
+                // Send room_joined with full state back to the reconnecting client
+                sendRoomState(io, socket, roomName, userId);
+                return;
+            }
+
+            // Normal join (not a reconnect)
             // Leave current room if already in one
             if (currentRoom) {
-                leaveRoom(io, socket, currentRoom, currentUserId);
+                leaveRoom(io, socket, currentRoom, currentUserId, true);
             }
 
             currentRoom = roomName;
@@ -33,16 +76,20 @@ function setupSocket(server) {
 
             socket.join(roomName);
 
+            // Cancel any lingering away timeout for this user
+            cancelAwayTimeout(roomName, userId);
+
             // Track user in rooms map
             if (!rooms.has(roomName)) {
                 rooms.set(roomName, new Map());
             }
             rooms.get(roomName).set(userId, {
                 socketId: socket.id,
+                away: false,
                 puffData: {
                     ...puffData,
-                    x: puffData.x || 0,
-                    y: puffData.y || 0,
+                    x: puffData.x || 0.5,
+                    y: puffData.y || 0.5,
                     lastSeen: Date.now()
                 }
             });
@@ -51,23 +98,7 @@ function setupSocket(server) {
             const roomData = rooms.get(roomName);
             if (!roomData.activityStats) roomData.activityStats = {};
 
-            // Send current room users and chat history to the joining user (excluding self)
-            const currentUsers = [];
-            roomData.forEach((user, uid) => {
-                if (uid !== userId) {
-                    currentUsers.push({
-                        userId: uid,
-                        puffData: user.puffData
-                    });
-                }
-            });
-            socket.emit('room_joined', {
-                roomName,
-                users: currentUsers,
-                chatHistory: roomData.chatHistory || [],
-                roomTimer: roomData.roomTimer || null,
-                activityStats: roomData.activityStats
-            });
+            sendRoomState(io, socket, roomName, userId);
 
             // Broadcast to others that a new user joined
             socket.to(roomName).emit('user_joined', {
@@ -78,7 +109,8 @@ function setupSocket(server) {
 
         socket.on('leave_room', () => {
             if (currentRoom) {
-                leaveRoom(io, socket, currentRoom, currentUserId);
+                cancelAwayTimeout(currentRoom, currentUserId);
+                leaveRoom(io, socket, currentRoom, currentUserId, false);
                 currentRoom = null;
                 currentUserId = null;
                 socket.emit('room_left');
@@ -159,28 +191,108 @@ function setupSocket(server) {
         });
 
         socket.on('disconnect', () => {
-            if (currentRoom) {
-                leaveRoom(io, socket, currentRoom, currentUserId);
+            if (currentRoom && currentUserId) {
+                const room = rooms.get(currentRoom);
+                if (room && room.has(currentUserId)) {
+                    // Mark as away and start grace period timer
+                    const userData = room.get(currentUserId);
+                    userData.away = true;
+                    userData.puffData.lastSeen = Date.now();
+
+                    // Broadcast away state
+                    socket.to(currentRoom).emit('user_away', {
+                        userId: currentUserId,
+                        puffData: userData.puffData
+                    });
+
+                    // Set timeout to fully remove after grace period
+                    const timeoutId = setTimeout(() => {
+                        const r = rooms.get(currentRoom);
+                        if (r && r.has(currentUserId) && r.get(currentUserId).away) {
+                            leaveRoom(io, null, currentRoom, currentUserId, true);
+                            // Notify remaining users
+                            if (r && r.size > 0) {
+                                io.to(currentRoom).emit('user_left', { userId: currentUserId });
+                            }
+                        }
+                        cancelAwayTimeout(currentRoom, currentUserId);
+                    }, AWAY_TIMEOUT);
+
+                    // Store timeout
+                    if (!awayTimeouts.has(currentRoom)) {
+                        awayTimeouts.set(currentRoom, new Map());
+                    }
+                    awayTimeouts.get(currentRoom).set(currentUserId, timeoutId);
+                } else {
+                    // User not in room map (shouldn't happen), just clean up
+                    leaveRoom(io, socket, currentRoom, currentUserId, true);
+                }
             }
+            currentRoom = null;
+            currentUserId = null;
         });
     });
 
     return io;
 }
 
-function leaveRoom(io, socket, roomName, userId) {
+function sendRoomState(io, socket, roomName, userId) {
+    const roomData = rooms.get(roomName);
+    if (!roomData) return;
+
+    const currentUsers = [];
+    roomData.forEach((user, uid) => {
+        if (uid !== userId) {
+            currentUsers.push({
+                userId: uid,
+                puffData: user.puffData
+            });
+        }
+    });
+
+    socket.emit('room_joined', {
+        roomName,
+        users: currentUsers,
+        chatHistory: roomData.chatHistory || [],
+        roomTimer: roomData.roomTimer || null,
+        activityStats: roomData.activityStats || {}
+    });
+}
+
+function leaveRoom(io, socket, roomName, userId, keepStats) {
     if (!roomName || !userId) return;
 
-    socket.leave(roomName);
+    if (socket) {
+        socket.leave(roomName);
+    }
 
     const room = rooms.get(roomName);
     if (room) {
         room.delete(userId);
-        socket.to(roomName).emit('user_left', { userId });
 
-        // Clean up empty rooms
+        // Clean up empty rooms (but keep activityStats if they exist)
         if (room.size === 0) {
-            rooms.delete(roomName);
+            if (keepStats && room.activityStats && Object.keys(room.activityStats).length > 0) {
+                // Create a minimal room placeholder to preserve stats
+                rooms.set(roomName, new Map());
+                const newRoom = rooms.get(roomName);
+                newRoom.activityStats = room.activityStats;
+                newRoom.chatHistory = room.chatHistory || [];
+                newRoom.roomTimer = room.roomTimer || null;
+            } else {
+                rooms.delete(roomName);
+            }
+        }
+    }
+}
+
+function cancelAwayTimeout(roomName, userId) {
+    const roomTimeouts = awayTimeouts.get(roomName);
+    if (roomTimeouts && roomTimeouts.has(userId)) {
+        clearTimeout(roomTimeouts.get(userId));
+        roomTimeouts.delete(userId);
+        if (roomTimeouts.size === 0) {
+            awayTimeouts.delete(roomName);
         }
     }
 }

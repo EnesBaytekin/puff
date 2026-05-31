@@ -1457,6 +1457,28 @@ body.theme-dark .room-leave-btn {
     border-radius: 0;
 }
 
+.room-reconnecting {
+    position: fixed;
+    top: 68px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1002;
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffd700;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 4px 16px;
+    border-radius: 20px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    animation: pulse-reconnect 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-reconnect {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+}
+
 .room-timer-info {
     display: flex;
     align-items: center;

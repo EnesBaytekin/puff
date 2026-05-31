@@ -37,6 +37,7 @@ class RoomManager {
         this.roomActivityStats = {};
         this._roomStatsSyncInterval = null;
         this._lastRoomStatsSyncTime = Date.now();
+        this._reconnecting = false;
     }
 
     connect() {
@@ -83,9 +84,24 @@ class RoomManager {
         this.socket.on('disconnect', () => {
             console.log('[Room] Socket disconnected');
             this.connected = false;
-            // Save room name before cleanup so we can re-join on reconnect
-            this.reconnectRoom = this.currentRoom;
-            this.handleDisconnect();
+
+            if (this.currentRoom) {
+                // Graceful disconnect: keep room state, don't exit room mode
+                this.reconnectRoom = this.currentRoom;
+
+                // Log current activity session and reset timer to avoid double-counting
+                if (this.currentReaction && this.activityStartTime) {
+                    this.logActivitySession(this.currentReaction);
+                    this.activityStartTime = null;
+                }
+
+                // Clear remote puffs — they'll be re-populated on reconnect
+                this.remotePuffs.clear();
+                this.remoteUsers.clear();
+
+                this._reconnecting = true;
+                this.updateReconnectingUI();
+            }
         });
 
         this.socket.on('room_joined', (data) => {
@@ -131,8 +147,13 @@ class RoomManager {
             this.updateRoomUI();
             this.startSendingPosition();
 
-            // Enter room mode (dedicated view like minigame)
-            this.enterRoomMode();
+            if (this._reconnecting) {
+                this._reconnecting = false;
+                this.updateReconnectingUI();
+            } else {
+                // Enter room mode only on fresh join, not reconnect
+                this.enterRoomMode();
+            }
         });
 
         this.socket.on('room_error', (data) => {
@@ -143,6 +164,27 @@ class RoomManager {
         this.socket.on('room_left', () => {
             console.log('[Room] Left room');
             this.currentRoom = null;
+        });
+
+        this.socket.on('user_away', (data) => {
+            console.log('[Room] User away:', data.userId);
+            const puff = this.remotePuffs.get(data.userId);
+            if (puff) {
+                puff.isAway = true;
+            }
+        });
+
+        this.socket.on('user_back', (data) => {
+            console.log('[Room] User back:', data.userId);
+            const puff = this.remotePuffs.get(data.userId);
+            if (puff) {
+                puff.isAway = false;
+                // Update position from server data
+                if (data.puffData) {
+                    puff.remoteNormX = data.puffData.x !== undefined ? data.puffData.x : 0.5;
+                    puff.remoteNormY = data.puffData.y !== undefined ? data.puffData.y : 0.5;
+                }
+            }
         });
 
         this.socket.on('user_joined', (data) => {
@@ -393,9 +435,11 @@ class RoomManager {
         if (chatPanel) chatPanel.classList.remove('open');
         this._chatOpen = false;
 
-        // Hide shared timer bar and stop room stats sync
+        // Hide shared timer bar, reconnecting indicator, and stop room stats sync
         this.stopTimerBar();
         this.stopRoomStatsSync();
+        this._reconnecting = false;
+        this.updateReconnectingUI();
 
         // Hide stats toggle and panel
         const statsToggle = document.getElementById('room-stats-toggle');
@@ -634,6 +678,12 @@ class RoomManager {
     // Called each frame to render remote puffs
     render(ctx) {
         this.remotePuffs.forEach((puff, userId) => {
+            // Away puffs are drawn at lower opacity
+            if (puff.isAway) {
+                ctx.save();
+                ctx.globalAlpha = 0.35;
+            }
+
             puff.draw(ctx);
 
             // Draw name tag above puff
@@ -665,9 +715,20 @@ class RoomManager {
                 }
 
                 // Name text
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = puff.isAway ? 'rgba(255,255,255,0.4)' : '#ffffff';
                 ctx.fillText(puff.displayName, nx, ny - 4);
                 ctx.restore();
+
+                // Away badge
+                if (puff.isAway) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.6;
+                    ctx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText('💤', nx, ny - 28);
+                    ctx.restore();
+                }
 
                 // Chat speech bubble
                 this.drawChatBubble(ctx, puff, userId);
@@ -676,6 +737,10 @@ class RoomManager {
                 if (puff.remoteReaction) {
                     this.drawDurationBadge(ctx, puff, puff.remoteActivityDuration);
                 }
+            }
+
+            if (puff.isAway) {
+                ctx.restore(); // restore alpha
             }
         });
     }
@@ -1088,6 +1153,12 @@ class RoomManager {
             name: this.appView.puffName || 'You',
             activities: myStats.activities || {}
         });
+    }
+
+    updateReconnectingUI() {
+        const el = document.getElementById('room-reconnecting');
+        if (!el) return;
+        el.style.display = this._reconnecting ? 'block' : 'none';
     }
 
     drawDurationBadge(ctx, puff, durationSeconds) {
